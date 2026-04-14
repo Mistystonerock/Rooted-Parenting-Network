@@ -15,6 +15,8 @@ create table if not exists public.families (
   primary_client_name text,
   case_note text,
   assigned_course_slug text,
+  invited_staff_user_id uuid references auth.users(id) on delete set null,
+  invite_code_used text,
   created_at timestamptz not null default now()
 );
 
@@ -34,6 +36,19 @@ create table if not exists public.staff_family_assignments (
   staff_user_id uuid not null references auth.users(id) on delete cascade,
   assigned_at timestamptz not null default now(),
   unique (family_id, staff_user_id)
+);
+
+create table if not exists public.invite_codes (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  staff_user_id uuid not null references auth.users(id) on delete cascade,
+  agency_name text,
+  assigned_course_slug text,
+  is_active boolean not null default true,
+  redeemed_by_parent_user_id uuid references auth.users(id) on delete set null,
+  redeemed_family_id uuid references public.families(id) on delete set null,
+  redeemed_at timestamptz,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.daily_logs (
@@ -85,6 +100,7 @@ alter table public.profiles enable row level security;
 alter table public.families enable row level security;
 alter table public.family_children enable row level security;
 alter table public.staff_family_assignments enable row level security;
+alter table public.invite_codes enable row level security;
 alter table public.daily_logs enable row level security;
 alter table public.attendance_logs enable row level security;
 alter table public.assessment_submissions enable row level security;
@@ -126,7 +142,8 @@ on public.families
 for select
 to authenticated
 using (
-  exists (
+  invited_staff_user_id = auth.uid()
+  or exists (
     select 1
     from public.staff_family_assignments sfa
     where sfa.family_id = families.id
@@ -168,6 +185,12 @@ using (
     where sfa.family_id = family_children.family_id
       and sfa.staff_user_id = auth.uid()
   )
+  or exists (
+    select 1
+    from public.families f
+    where f.id = family_children.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
 );
 
 drop policy if exists "staff_assignments_self_read" on public.staff_family_assignments;
@@ -176,6 +199,44 @@ on public.staff_family_assignments
 for select
 to authenticated
 using (staff_user_id = auth.uid());
+
+drop policy if exists "staff_assignments_parent_invite_insert" on public.staff_family_assignments;
+create policy "staff_assignments_parent_invite_insert"
+on public.staff_family_assignments
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.families f
+    where f.id = staff_family_assignments.family_id
+      and f.parent_user_id = auth.uid()
+      and f.invited_staff_user_id = staff_family_assignments.staff_user_id
+  )
+);
+
+drop policy if exists "invite_codes_staff_manage" on public.invite_codes;
+create policy "invite_codes_staff_manage"
+on public.invite_codes
+for all
+to authenticated
+using (staff_user_id = auth.uid())
+with check (staff_user_id = auth.uid());
+
+drop policy if exists "invite_codes_parent_lookup" on public.invite_codes;
+create policy "invite_codes_parent_lookup"
+on public.invite_codes
+for select
+to authenticated
+using (is_active = true);
+
+drop policy if exists "invite_codes_parent_redeem" on public.invite_codes;
+create policy "invite_codes_parent_redeem"
+on public.invite_codes
+for update
+to authenticated
+using (is_active = true and redeemed_by_parent_user_id is null)
+with check (redeemed_by_parent_user_id = auth.uid());
 
 drop policy if exists "daily_logs_parent_full_access" on public.daily_logs;
 create policy "daily_logs_parent_full_access"
@@ -208,6 +269,11 @@ using (
     from public.staff_family_assignments sfa
     where sfa.family_id = daily_logs.family_id
       and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = daily_logs.family_id
+      and f.invited_staff_user_id = auth.uid()
   )
 );
 
@@ -243,6 +309,11 @@ using (
     where sfa.family_id = attendance_logs.family_id
       and sfa.staff_user_id = auth.uid()
   )
+  or exists (
+    select 1 from public.families f
+    where f.id = attendance_logs.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
 );
 
 drop policy if exists "assessment_parent_full_access" on public.assessment_submissions;
@@ -277,6 +348,11 @@ using (
     where sfa.family_id = assessment_submissions.family_id
       and sfa.staff_user_id = auth.uid()
   )
+  or exists (
+    select 1 from public.families f
+    where f.id = assessment_submissions.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
 );
 
 drop policy if exists "completion_parent_full_access" on public.completion_records;
@@ -310,5 +386,10 @@ using (
     from public.staff_family_assignments sfa
     where sfa.family_id = completion_records.family_id
       and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = completion_records.family_id
+      and f.invited_staff_user_id = auth.uid()
   )
 );

@@ -90,6 +90,15 @@
       }));
     }
 
+    function generateInviteCode() {
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let result = "RPN-";
+      for (let index = 0; index < 8; index += 1) {
+        result += alphabet[Math.floor(Math.random() * alphabet.length)];
+      }
+      return result;
+    }
+
     async function requireStaffSession() {
       const { data } = await supabaseClient.auth.getSession();
       if (!data.session) {
@@ -148,7 +157,58 @@
       };
     }
 
-    function renderPortal(staffProfile, dataset) {
+    async function loadInviteCodes(staffUserId) {
+      const { data, error } = await supabaseClient
+        .from("invite_codes")
+        .select("*")
+        .eq("staff_user_id", staffUserId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      return data || [];
+    }
+
+    function bindInviteCodeActions(access) {
+      document.getElementById("create-invite-code")?.addEventListener("click", async () => {
+        const code = document.getElementById("invite-code-value")?.value.trim().toUpperCase();
+        const assignedCourseSlug = document.getElementById("invite-course-slug")?.value.trim() || null;
+        const messageBox = document.getElementById("invite-code-message");
+
+        if (!code) {
+          messageBox.innerHTML = "<p>Please enter an invite code.</p>";
+          return;
+        }
+
+        messageBox.innerHTML = "<p>Creating invite code...</p>";
+
+        const { error } = await supabaseClient
+          .from("invite_codes")
+          .insert({
+            code,
+            staff_user_id: access.session.user.id,
+            agency_name: access.profile.agency_name || "",
+            assigned_course_slug: assignedCourseSlug,
+            is_active: true
+          });
+
+        if (error) {
+          messageBox.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+          return;
+        }
+
+        const refreshedDataset = await loadAssignedFamilies(access.session.user.id);
+        const refreshedInviteCodes = await loadInviteCodes(access.session.user.id);
+        renderPortal(access.profile, refreshedDataset, refreshedInviteCodes);
+        bindInviteCodeActions(access);
+
+        document.getElementById("invite-code-message").innerHTML = `<p>Invite code ${escapeHtml(code)} created successfully.</p>`;
+      });
+    }
+
+    function renderPortal(staffProfile, dataset, inviteCodes) {
       const familyCards = dataset.families.map((family) => {
         const childNames = dataset.children
           .filter((child) => child.family_id === family.id)
@@ -196,6 +256,52 @@
         </section>
 
         <section class="section-card">
+          <h2>Agency Invite Codes</h2>
+          <p>Create an invite code for a family. They can use it during sign-up and family setup to connect automatically to your agency view.</p>
+          <div class="tracker-form">
+            <label class="tracker-field">
+              <span>Invite code</span>
+              <input id="invite-code-value" type="text" value="${escapeHtml(generateInviteCode())}" />
+            </label>
+            <label class="tracker-field">
+              <span>Assigned course track</span>
+              <input id="invite-course-slug" type="text" placeholder="Optional course slug" />
+            </label>
+            <div class="hero-actions hero-actions--stacked">
+              <button class="primary-button" type="button" id="create-invite-code">Create Invite Code</button>
+            </div>
+            <div class="note-box" id="invite-code-message">
+              <p>Families can enter this code during account creation and the app will connect them to your agency after family setup.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>Existing invite codes</h2>
+          ${
+            inviteCodes.length
+              ? inviteCodes
+                  .map(
+                    (invite) => `
+                      <div class="tracker-entry">
+                        <p><strong>Code:</strong> ${escapeHtml(invite.code)}</p>
+                        <p><strong>Assigned track:</strong> ${escapeHtml(invite.assigned_course_slug || "Not assigned")}</p>
+                        <p><strong>Status:</strong> ${
+                          invite.redeemed_family_id
+                            ? `Redeemed by family ${escapeHtml(invite.redeemed_family_id)}`
+                            : invite.is_active
+                              ? "Active"
+                              : "Inactive"
+                        }</p>
+                      </div>
+                    `
+                  )
+                  .join("")
+              : "<p>No invite codes created yet.</p>"
+          }
+        </section>
+
+        <section class="section-card">
           <h2>Portal Snapshot</h2>
           <div class="pill-row">
             <span class="pill">${dataset.families.length} assigned families</span>
@@ -222,7 +328,9 @@
         const access = await requireStaffSession();
         if (!access) return;
         const dataset = await loadAssignedFamilies(access.session.user.id);
-        renderPortal(access.profile, dataset);
+        const inviteCodes = await loadInviteCodes(access.session.user.id);
+        renderPortal(access.profile, dataset, inviteCodes);
+        bindInviteCodeActions(access);
       } catch (error) {
         portalRoot.innerHTML = `
           <section class="section-card">

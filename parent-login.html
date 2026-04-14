@@ -21,7 +21,7 @@
     <main class="content">
       <section class="hero">
         <h2>Create your account or sign in</h2>
-        <p>Parents and caregivers can use this page to create an account, sign in, and then set up their family profile inside the app.</p>
+        <p>Parents and caregivers can use this page to create an account, sign in, and then set up their family profile inside the app. If an agency gave you an invite code, enter it here first.</p>
       </section>
 
       <section class="section-card">
@@ -34,6 +34,10 @@
           <label class="tracker-field">
             <span>Password</span>
             <input id="parent-password" type="password" placeholder="Password" />
+          </label>
+          <label class="tracker-field">
+            <span>Agency invite code</span>
+            <input id="parent-invite-code" type="text" placeholder="Optional invite code" />
           </label>
           <div class="hero-actions hero-actions--stacked">
             <button class="primary-button" type="button" id="parent-signin-button">Sign In</button>
@@ -49,9 +53,10 @@
         <h2>What happens next</h2>
         <ul class="bullet-list">
           <li>Parent creates or signs into an account.</li>
+          <li>If the family has an agency invite code, it is saved for family setup.</li>
           <li>Parent completes family setup with caregiver name and child names.</li>
           <li>Family profile is saved into Supabase instead of only on the device.</li>
-          <li>That family can later be assigned to staff for read-only CPS or court review.</li>
+          <li>When a valid invite code is used, the family is connected to the agency automatically for read-only CPS or court review.</li>
         </ul>
       </section>
 
@@ -86,8 +91,19 @@
       window.ROOTED_SUPABASE_URL,
       window.ROOTED_SUPABASE_ANON_KEY
     );
+    const pendingInviteCodeKey = "rooted-parenting-network-pending-invite-code";
 
     const messageBox = document.getElementById("parent-login-message");
+
+    function savePendingInviteCode() {
+      const inviteCode = document.getElementById("parent-invite-code").value.trim().toUpperCase();
+      if (inviteCode) {
+        window.localStorage.setItem(pendingInviteCodeKey, inviteCode);
+      } else {
+        window.localStorage.removeItem(pendingInviteCodeKey);
+      }
+      return inviteCode;
+    }
 
     async function redirectIfLoggedIn() {
       const { data } = await supabaseClient.auth.getSession();
@@ -114,6 +130,7 @@
     document.getElementById("parent-signin-button").addEventListener("click", async () => {
       const email = document.getElementById("parent-email").value.trim();
       const password = document.getElementById("parent-password").value;
+      savePendingInviteCode();
 
       if (!email || !password) {
         messageBox.innerHTML = "<p>Please enter both email and password.</p>";
@@ -138,6 +155,7 @@
     document.getElementById("parent-signup-button").addEventListener("click", async () => {
       const email = document.getElementById("parent-email").value.trim();
       const password = document.getElementById("parent-password").value;
+      savePendingInviteCode();
 
       if (!email || !password) {
         messageBox.innerHTML = "<p>Please enter both email and password.</p>";

@@ -43,6 +43,13 @@
             <p>Course tracks are assigned later by staff, CPS, or the court based on the referral reason. Parents can create the family profile here, but they do not need to choose the case track.</p>
           </div>
           <label class="tracker-field">
+            <span>Agency invite code</span>
+            <input id="setup-invite-code" type="text" placeholder="Optional invite code" />
+          </label>
+          <div class="note-box" id="invite-status-box">
+            <p>If you were given an agency invite code, saving your family profile will connect your family to that agency automatically.</p>
+          </div>
+          <label class="tracker-field">
             <span>Case note</span>
             <textarea id="setup-case-note" rows="3" placeholder="Optional family or referral note"></textarea>
           </label>
@@ -84,9 +91,11 @@
       window.ROOTED_SUPABASE_URL,
       window.ROOTED_SUPABASE_ANON_KEY
     );
+    const pendingInviteCodeKey = "rooted-parenting-network-pending-invite-code";
 
     const childrenList = document.getElementById("setup-children-list");
     const messageBox = document.getElementById("setup-message");
+    const inviteStatusBox = document.getElementById("invite-status-box");
     let currentUser = null;
     let currentFamilyId = null;
     let currentAssignedCourseSlug = null;
@@ -110,6 +119,108 @@
       `;
       childrenList.appendChild(wrapper);
       childCount += 1;
+    }
+
+    async function getInviteCodeRecord(rawCode) {
+      const code = String(rawCode || "").trim().toUpperCase();
+      if (!code) {
+        return null;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("invite_codes")
+        .select("*")
+        .eq("code", code)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      return data || null;
+    }
+
+    async function applyInviteCodeToFamily(familyId) {
+      const inviteCode = document.getElementById("setup-invite-code").value.trim().toUpperCase();
+      if (!inviteCode) {
+        inviteStatusBox.innerHTML = "<p>No agency invite code was entered. Your family profile is still saved.</p>";
+        window.localStorage.removeItem(pendingInviteCodeKey);
+        return;
+      }
+
+      const invite = await getInviteCodeRecord(inviteCode);
+      if (!invite) {
+        inviteStatusBox.innerHTML = "<p>That invite code was not found. Your family profile saved, but no agency connection was made.</p>";
+        return;
+      }
+
+      if (!invite.is_active || invite.redeemed_family_id) {
+        inviteStatusBox.innerHTML = "<p>That invite code is no longer active. Your family profile saved, but no agency connection was made.</p>";
+        return;
+      }
+
+      const nextAssignedCourseSlug = currentAssignedCourseSlug || invite.assigned_course_slug || null;
+
+      const { error: familyLinkError } = await supabaseClient
+        .from("families")
+        .update({
+          invited_staff_user_id: invite.staff_user_id,
+          invite_code_used: invite.code,
+          assigned_course_slug: nextAssignedCourseSlug
+        })
+        .eq("id", familyId);
+
+      if (familyLinkError) {
+        throw familyLinkError;
+      }
+
+      currentAssignedCourseSlug = nextAssignedCourseSlug;
+      document.getElementById("setup-assigned-course-display").value =
+        currentAssignedCourseSlug
+          ? currentAssignedCourseSlug
+              .split("-")
+              .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+              .join(" ")
+          : "Not assigned yet";
+
+      const { error: inviteRedeemError } = await supabaseClient
+        .from("invite_codes")
+        .update({
+          redeemed_by_parent_user_id: currentUser.id,
+          redeemed_family_id: familyId,
+          redeemed_at: new Date().toISOString(),
+          is_active: false
+        })
+        .eq("id", invite.id);
+
+      if (inviteRedeemError) {
+        throw inviteRedeemError;
+      }
+
+      const { error: assignmentError } = await supabaseClient
+        .from("staff_family_assignments")
+        .upsert({
+          family_id: familyId,
+          staff_user_id: invite.staff_user_id
+        }, { onConflict: "family_id,staff_user_id" });
+
+      if (assignmentError) {
+        throw assignmentError;
+      }
+
+      const { error: profileAgencyError } = await supabaseClient
+        .from("profiles")
+        .update({
+          agency_name: invite.agency_name || "Rooted Parenting Network"
+        })
+        .eq("user_id", currentUser.id);
+
+      if (profileAgencyError) {
+        throw profileAgencyError;
+      }
+
+      inviteStatusBox.innerHTML = `<p>Invite code accepted. Your family is now connected to ${escapeHtml(invite.agency_name || "the assigned agency")}.</p>`;
+      window.localStorage.removeItem(pendingInviteCodeKey);
     }
 
     async function requireParentSession() {
@@ -147,6 +258,7 @@
       }
 
       if (!family) {
+        document.getElementById("setup-invite-code").value = window.localStorage.getItem(pendingInviteCodeKey) || "";
         addChildInput("");
         return;
       }
@@ -156,6 +268,7 @@
       document.getElementById("setup-caregiver-name").value = family.caregiver_name || "";
       document.getElementById("setup-primary-client").value = family.primary_client_name || "";
       document.getElementById("setup-case-note").value = family.case_note || "";
+      document.getElementById("setup-invite-code").value = family.invite_code_used || window.localStorage.getItem(pendingInviteCodeKey) || "";
       document.getElementById("setup-assigned-course-display").value =
         currentAssignedCourseSlug
           ? currentAssignedCourseSlug
@@ -177,6 +290,10 @@
         children.forEach((child) => addChildInput(child.child_name));
       } else {
         addChildInput(family.primary_client_name || "");
+      }
+
+      if (family.invite_code_used) {
+        inviteStatusBox.innerHTML = "<p>This family is already connected to an agency invite code.</p>";
       }
     }
 
@@ -280,7 +397,14 @@
         return;
       }
 
-      messageBox.innerHTML = "<p>Family profile saved successfully. You can now use this family record in the parent app and future staff portal assignments.</p>";
+      try {
+        await applyInviteCodeToFamily(currentFamilyId);
+      } catch (inviteError) {
+        messageBox.innerHTML = `<p>${inviteError.message}</p>`;
+        return;
+      }
+
+      messageBox.innerHTML = "<p>Family profile saved successfully. You can now use this family record in the parent app and any connected agency portal assignment.</p>";
     }
 
     document.getElementById("add-child-button").addEventListener("click", () => addChildInput(""));
