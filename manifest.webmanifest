@@ -1,0 +1,25 @@
+{
+  "name": "Rooted Parenting Network",
+  "short_name": "Rooted Parenting Network",
+  "description": "A 21-day parenting support program with daily check-ins, learning tools, progress tracking, and family support resources.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f1ea",
+  "theme_color": "#7f8f79",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/rooted-parenting-icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/rooted-parenting-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
