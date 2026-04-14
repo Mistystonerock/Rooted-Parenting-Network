@@ -3491,7 +3491,8 @@ function renderTeam() {
         <div class="tracker-field">
           <span>Permission options</span>
           <div class="permission-grid">
-            <label><input type="radio" name="team-permission" value="view progress only" checked /> <span>View progress only</span></label>
+            <label><input type="radio" name="team-permission" value="all 3: view progress only, view behavior patterns, view lesson completion" checked /> <span>All 3</span></label>
+            <label><input type="radio" name="team-permission" value="view progress only" /> <span>View progress only</span></label>
             <label><input type="radio" name="team-permission" value="view behavior patterns" /> <span>View behavior patterns</span></label>
             <label><input type="radio" name="team-permission" value="view lesson completion" /> <span>View lesson completion</span></label>
           </div>
