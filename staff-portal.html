@@ -165,6 +165,10 @@
         .order("created_at", { ascending: false });
 
       if (error) {
+        const message = String(error.message || "").toLowerCase();
+        if (message.includes("invite_codes") || message.includes("does not exist") || message.includes("schema cache")) {
+          return [];
+        }
         throw error;
       }
 
@@ -195,6 +199,11 @@
           });
 
         if (error) {
+          const message = String(error.message || "").toLowerCase();
+          if (message.includes("invite_codes") || message.includes("does not exist") || message.includes("schema cache")) {
+            messageBox.innerHTML = "<p>The invite-code database update has not been run in Supabase yet. The staff portal still works, but invite codes are not live until that SQL is applied.</p>";
+            return;
+          }
           messageBox.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
           return;
         }
