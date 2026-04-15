@@ -3057,7 +3057,26 @@ function renderHome() {
       <div class="hero-actions hero-actions--stacked">
         <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
         <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals</button>
+        <a class="secondary-button" href="parent-setup.html">Open Messages and Family Hub</a>
+        ${
+          hasProfessionalAccess()
+            ? '<a class="secondary-button" href="staff-portal.html">Open Provider Schedule Portal</a>'
+            : ""
+        }
         <button class="secondary-button" type="button" data-route-link="report">Open Attendance and Progress Report</button>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Messages and shared schedule</h2>
+      <p>Use the Family Hub for parent messages and shared documents. Use the Staff Portal to enter provider visits, court dates, appointments, and teacher-parent meetings with dates and times.</p>
+      <div class="hero-actions hero-actions--stacked">
+        <a class="primary-button" href="parent-setup.html">Open Family Hub</a>
+        ${
+          hasProfessionalAccess()
+            ? '<a class="secondary-button" href="staff-portal.html">Open Staff Portal</a>'
+            : ""
+        }
       </div>
     </section>
 
@@ -3102,10 +3121,17 @@ function renderHome() {
 
     <section class="section-card">
       <h2>Upcoming</h2>
+      <p>Add court dates, appointments, provider visits, and teacher-parent meetings in the Family Hub or Staff Portal. They will show here after they are saved.</p>
       <div class="upcoming-list">
         ${upcomingItems.map((item) => `<div class="upcoming-item"><strong>${escapeHtml(item.title)}</strong><br />${escapeHtml(item.detail)}</div>`).join("")}
       </div>
       <div class="hero-actions hero-actions--stacked">
+        <a class="secondary-button" href="parent-setup.html">Open Family Hub</a>
+        ${
+          hasProfessionalAccess()
+            ? '<a class="secondary-button" href="staff-portal.html">Add Dates and Times in Staff Portal</a>'
+            : ""
+        }
         <button class="secondary-button" type="button" data-route-link="report">Open Attendance and Progress Report</button>
       </div>
     </section>
@@ -3145,7 +3171,7 @@ function renderHome() {
       <p>Everything below stays connected to the same payment plan, policy, terms, and professional materials already in the app.</p>
       <div class="hero-actions hero-actions--stacked">
         <a class="resource-link" href="parent-login.html" target="_blank" rel="noopener noreferrer">Parent Sign In</a>
-        <a class="resource-link" href="parent-setup.html" target="_blank" rel="noopener noreferrer">Family Setup</a>
+        <a class="resource-link" href="parent-setup.html">Family Setup, Messages, and Schedule</a>
         ${
           hasPremiumAccess()
             ? `<a class="resource-link" href="rooted-parenting-workbook.html" target="_blank" rel="noopener noreferrer">Open Parent Workbook</a>`
@@ -3988,6 +4014,12 @@ function renderTeam() {
       <div class="hero-actions hero-actions--stacked">
         <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
         <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals</button>
+        <a class="secondary-button" href="parent-setup.html">Open Parent Messages and Shared Schedule</a>
+        ${
+          hasProfessionalAccess()
+            ? '<a class="secondary-button" href="staff-portal.html">Open Staff Portal for Dates and Times</a>'
+            : ""
+        }
         <button class="secondary-button" type="button" data-route-link="report">Open Attendance and Progress Report</button>
       </div>
     </section>
@@ -3996,6 +4028,18 @@ function renderTeam() {
       <p>Keep one child-centered plan so parents, teachers, and providers respond with the same trauma-informed pattern instead of mixed messages.</p>
       <div class="hero-actions hero-actions--stacked">
         <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
+      </div>
+    </section>
+    <section class="detail-card">
+      <h3>Where to enter dates, times, and messages</h3>
+      <p>The live message thread and shared schedule entry are in the Family Hub and Staff Portal. Use those pages to add provider visits, court dates, meetings, and back-and-forth messages.</p>
+      <div class="hero-actions hero-actions--stacked">
+        <a class="secondary-button" href="parent-setup.html">Open Family Hub</a>
+        ${
+          hasProfessionalAccess()
+            ? '<a class="secondary-button" href="staff-portal.html">Open Staff Portal</a>'
+            : ""
+        }
       </div>
     </section>
   `;
