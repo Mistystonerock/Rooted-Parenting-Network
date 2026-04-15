@@ -99,6 +99,11 @@
       return result;
     }
 
+    function buildInviteMessage(code, agencyName, assignedCourseSlug) {
+      const trackText = assignedCourseSlug ? ` Assigned track: ${assignedCourseSlug}.` : "";
+      return `You have been invited to join Rooted Parenting Network.${trackText} Use invite code ${code} during sign-up and family setup to connect with ${agencyName || "your agency"}.`;
+    }
+
     async function requireStaffSession() {
       const { data } = await supabaseClient.auth.getSession();
       if (!data.session) {
@@ -215,6 +220,53 @@
 
         document.getElementById("invite-code-message").innerHTML = `<p>Invite code ${escapeHtml(code)} created successfully.</p>`;
       });
+
+      document.getElementById("send-email-invite")?.addEventListener("click", () => {
+        const code = document.getElementById("invite-code-value")?.value.trim().toUpperCase();
+        const assignedCourseSlug = document.getElementById("invite-course-slug")?.value.trim() || null;
+        const familyEmail = document.getElementById("invite-family-email")?.value.trim();
+        const messageBox = document.getElementById("invite-code-message");
+
+        if (!familyEmail) {
+          messageBox.innerHTML = "<p>Enter a family email first.</p>";
+          return;
+        }
+
+        const subject = encodeURIComponent("Your Rooted Parenting Network Invite Code");
+        const body = encodeURIComponent(buildInviteMessage(code, access.profile.agency_name || "", assignedCourseSlug));
+        window.location.href = `mailto:${encodeURIComponent(familyEmail)}?subject=${subject}&body=${body}`;
+        messageBox.innerHTML = `<p>Email draft opened for ${escapeHtml(familyEmail)}.</p>`;
+      });
+
+      document.getElementById("send-text-invite")?.addEventListener("click", () => {
+        const code = document.getElementById("invite-code-value")?.value.trim().toUpperCase();
+        const assignedCourseSlug = document.getElementById("invite-course-slug")?.value.trim() || null;
+        const familyPhone = document.getElementById("invite-family-phone")?.value.trim();
+        const messageBox = document.getElementById("invite-code-message");
+
+        if (!familyPhone) {
+          messageBox.innerHTML = "<p>Enter a family phone number first.</p>";
+          return;
+        }
+
+        const body = encodeURIComponent(buildInviteMessage(code, access.profile.agency_name || "", assignedCourseSlug));
+        window.location.href = `sms:${encodeURIComponent(familyPhone)}?body=${body}`;
+        messageBox.innerHTML = `<p>Text draft opened for ${escapeHtml(familyPhone)}.</p>`;
+      });
+
+      document.getElementById("copy-invite-code")?.addEventListener("click", async () => {
+        const code = document.getElementById("invite-code-value")?.value.trim().toUpperCase();
+        const assignedCourseSlug = document.getElementById("invite-course-slug")?.value.trim() || null;
+        const messageBox = document.getElementById("invite-code-message");
+        const message = buildInviteMessage(code, access.profile.agency_name || "", assignedCourseSlug);
+
+        try {
+          await navigator.clipboard.writeText(message);
+          messageBox.innerHTML = "<p>Invite message copied to clipboard.</p>";
+        } catch (error) {
+          messageBox.innerHTML = `<p>${escapeHtml(message)}</p>`;
+        }
+      });
     }
 
     function renderPortal(staffProfile, dataset, inviteCodes) {
@@ -269,6 +321,14 @@
           <p>Create an invite code for a family. They can use it during sign-up and family setup to connect automatically to your agency view.</p>
           <div class="tracker-form">
             <label class="tracker-field">
+              <span>Family email</span>
+              <input id="invite-family-email" type="email" placeholder="family@email.com" />
+            </label>
+            <label class="tracker-field">
+              <span>Family phone</span>
+              <input id="invite-family-phone" type="text" placeholder="5551234567" />
+            </label>
+            <label class="tracker-field">
               <span>Invite code</span>
               <input id="invite-code-value" type="text" value="${escapeHtml(generateInviteCode())}" />
             </label>
@@ -278,6 +338,9 @@
             </label>
             <div class="hero-actions hero-actions--stacked">
               <button class="primary-button" type="button" id="create-invite-code">Create Invite Code</button>
+              <button class="secondary-button" type="button" id="send-email-invite">Send Email Invite</button>
+              <button class="secondary-button" type="button" id="send-text-invite">Send Text Invite</button>
+              <button class="secondary-button" type="button" id="copy-invite-code">Copy Invite Message</button>
             </div>
             <div class="note-box" id="invite-code-message">
               <p>Families can enter this code during account creation and the app will connect them to your agency after family setup.</p>
