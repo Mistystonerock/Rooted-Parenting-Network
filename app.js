@@ -1686,9 +1686,11 @@ const defaultTeamSettings = {
 };
 
 const defaultGoals = [
-  { id: "goal-regulation", title: "Improve emotional regulation", progress: 42 },
-  { id: "goal-school", title: "Reduce school incidents", progress: 36 },
-  { id: "goal-communication", title: "Improve communication", progress: 51 }
+  { id: "goal-1", title: "Improve emotional regulation", progress: 42, parentNote: "", providerNote: "" },
+  { id: "goal-2", title: "Reduce school incidents", progress: 36, parentNote: "", providerNote: "" },
+  { id: "goal-3", title: "Improve communication", progress: 51, parentNote: "", providerNote: "" },
+  { id: "goal-4", title: "Build calmer transitions", progress: 24, parentNote: "", providerNote: "" },
+  { id: "goal-5", title: "Increase positive follow-through", progress: 33, parentNote: "", providerNote: "" }
 ];
 
 fallbackContent.learningPath[0].sections = [
@@ -2414,12 +2416,26 @@ function saveTeamSettings(settings) {
 }
 
 function getSharedGoals() {
+  const normalizeGoal = (goal, index) => {
+    const fallback = defaultGoals[index] || defaultGoals[defaultGoals.length - 1];
+    return {
+      id: goal?.id || fallback.id,
+      title: goal?.title || fallback.title,
+      progress: Number.isFinite(Number(goal?.progress)) ? Math.max(0, Math.min(100, Number(goal.progress))) : fallback.progress,
+      parentNote: goal?.parentNote || "",
+      providerNote: goal?.providerNote || ""
+    };
+  };
+
   try {
     const raw = window.localStorage.getItem(goalsStorageKey);
     const saved = raw ? JSON.parse(raw) : defaultGoals;
-    return Array.isArray(saved) && saved.length ? saved : defaultGoals;
+    if (Array.isArray(saved) && saved.length) {
+      return defaultGoals.map((goal, index) => normalizeGoal(saved[index] || goal, index));
+    }
+    return defaultGoals.map((goal, index) => normalizeGoal(goal, index));
   } catch (error) {
-    return defaultGoals;
+    return defaultGoals.map((goal, index) => normalizeGoal(goal, index));
   }
 }
 
@@ -3772,6 +3788,266 @@ function renderTeam() {
   `;
 }
 
+function renderGoals() {
+  if (!hasPremiumAccess()) {
+    screenTitle.textContent = "Goals";
+    appContentRoot.innerHTML = renderPremiumUpgradeCard({
+      title: "Goals is Premium",
+      text: "The shared goals tab, reward tracking, attendance report, and fuller documentation tools are included with premium parent access."
+    });
+    return;
+  }
+
+  const goals = getSharedGoals();
+  const rewardEntries = getParentTrackerEntries();
+  screenTitle.textContent = "Goals";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Shared goals</h2>
+      <p>Use this tab for parents and providers to track five shared goals, update progress, and keep notes in one place inside the app.</p>
+      <div class="pill-row">
+        <span class="pill">5 shared goals</span>
+        <span class="pill">Parent + provider notes</span>
+        <span class="pill">Reward tracking</span>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Family and provider goals</h3>
+      <div class="tracker-form">
+        ${goals
+          .map(
+            (goal, index) => `
+              <div class="goal-card">
+                <label class="tracker-field">
+                  <span>Goal ${index + 1}</span>
+                  <input id="goal-title-${index}" type="text" value="${escapeHtml(goal.title || "")}" placeholder="Enter shared goal" />
+                </label>
+                <label class="tracker-field">
+                  <span>Progress percent</span>
+                  <input id="goal-progress-${index}" type="number" min="0" max="100" value="${escapeHtml(String(goal.progress ?? 0))}" />
+                </label>
+                <div class="progress-meter" aria-hidden="true"><span style="width:${goal.progress}%"></span></div>
+                <label class="tracker-field">
+                  <span>Parent note</span>
+                  <textarea id="goal-parent-note-${index}" rows="3" placeholder="What the parent is seeing or working on">${escapeHtml(goal.parentNote || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>Provider note</span>
+                  <textarea id="goal-provider-note-${index}" rows="3" placeholder="What the provider wants to track or support">${escapeHtml(goal.providerNote || "")}</textarea>
+                </label>
+              </div>
+            `
+          )
+          .join("")}
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-goals="true">Save Goals</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Reward system</h3>
+      <p>Use rewards and positive reinforcement here when a child completes a goal, tries a skill, or makes progress on a hard task.</p>
+      <div class="note-box">
+        <strong>No-cost reward ideas</strong>
+        ${bulletList([
+          "Extra one-on-one time with a parent or caregiver",
+          "Choice time for a favorite game or activity at home",
+          "Pick the family movie, story, or music for the evening",
+          "Stay up 10 extra minutes for reading or quiet time when appropriate",
+          "Choose dinner, snack, or family activity from approved options",
+          "Special helper job or leadership role",
+          "Extra playground, outside, dance, or movement time",
+          "A handwritten note, praise card, or encouragement coupon",
+          "Blanket fort, board game, or art time with a parent",
+          "Pick the bedtime story or choose the order of the bedtime routine"
+        ])}
+      </div>
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>Date</span>
+          <input id="tracker-date" type="date" />
+        </label>
+        <label class="tracker-field">
+          <span>Goal or task completed</span>
+          <input id="tracker-task" type="text" placeholder="Example: used calm words, completed homework, asked for a break" />
+        </label>
+        <label class="tracker-field">
+          <span>Reward or praise used</span>
+          <input id="tracker-reward" type="text" placeholder="Example: praise, sticker, extra time together, choice time" />
+        </label>
+        <label class="tracker-field">
+          <span>Calm follow-through if needed</span>
+          <input id="tracker-consequence" type="text" placeholder="Example: redo, repair step, brief reset, none needed" />
+        </label>
+        <label class="tracker-field">
+          <span>Notes</span>
+          <textarea id="tracker-notes" rows="3" placeholder="What worked, what helped, or what you want to repeat"></textarea>
+        </label>
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-parent-tracker="true">Save Reward Entry</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Saved reward entries</h3>
+      ${
+        rewardEntries.length
+          ? rewardEntries
+              .map(
+                (entry) => `
+                  <div class="tracker-entry">
+                    <strong>${escapeHtml(entry.date || "No date")}</strong>
+                    <p><strong>Goal or task:</strong> ${escapeHtml(entry.task || "Not entered")}</p>
+                    <p><strong>Reward:</strong> ${escapeHtml(entry.reward || "Not entered")}</p>
+                    <p><strong>Follow-through:</strong> ${escapeHtml(entry.consequence || "Not entered")}</p>
+                    <p><strong>Notes:</strong> ${escapeHtml(entry.notes || "Not entered")}</p>
+                  </div>
+                `
+              )
+              .join("")
+          : "<p>No reward entries saved yet. Add one above when a child reaches a goal or makes progress.</p>"
+      }
+    </section>
+  `;
+}
+
+function renderAttendanceProgressReport() {
+  if (!hasPremiumAccess()) {
+    screenTitle.textContent = "Attendance Report";
+    appContentRoot.innerHTML = renderPremiumUpgradeCard({
+      title: "Attendance and Progress Report is Premium",
+      text: "The in-app attendance report, progress summary, and documentation tools are included with premium parent access."
+    });
+    return;
+  }
+
+  const clientProfile = getClientProfile();
+  const attendanceEntries = getAttendanceEntries();
+  const completedLessons = getCompletedLessons();
+  const totalLessons = appContent.learningPath.length;
+  const dailyHabitEntries = getDailyHabitEntries();
+  const trackerEntries = getParentTrackerEntries();
+  const disciplineEntries = getDisciplineEntries();
+  const percent = totalLessons ? Math.round((completedLessons.length / totalLessons) * 100) : 0;
+
+  screenTitle.textContent = "Attendance Report";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Attendance and progress report</h2>
+      <p>This report now stays inside the app so parent, provider, CPS, school, and court notes can stay in one place.</p>
+      <div class="pill-row">
+        <span class="pill">${completedLessons.length} of ${totalLessons} lessons complete</span>
+        <span class="pill">${attendanceEntries.length} attendance entries</span>
+        <span class="pill">${percent}% course progress</span>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Summary</h3>
+      <p><strong>Primary client name:</strong> ${escapeHtml(clientProfile.clientName || "Not entered")}</p>
+      <p><strong>Caregiver name:</strong> ${escapeHtml(clientProfile.caregiverName || "Not entered")}</p>
+      <p><strong>Children on case:</strong> ${escapeHtml(clientProfile.children.filter(Boolean).join(", ") || "Not entered")}</p>
+      <p><strong>Case note:</strong> ${escapeHtml(clientProfile.caseNote || "Not entered")}</p>
+      <p><strong>Course progress:</strong> ${completedLessons.length} of ${totalLessons} lessons completed (${percent}%)</p>
+    </section>
+
+    <section class="detail-card">
+      <h3>Attendance and progress entry</h3>
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>Session or course title</span>
+          <input id="attendance-session" type="text" placeholder="Example: Session 2 - Positive Discipline and Follow-Through" />
+        </label>
+        <label class="tracker-field">
+          <span>Date</span>
+          <input id="attendance-date" type="date" />
+        </label>
+        <label class="tracker-field">
+          <span>Status</span>
+          <select id="attendance-status">
+            <option value="Attended">Attended</option>
+            <option value="Missed">Missed</option>
+            <option value="Rescheduled">Rescheduled</option>
+          </select>
+        </label>
+        <label class="tracker-field">
+          <span>What was learned or practiced</span>
+          <textarea id="attendance-learned" rows="3" placeholder="Add progress, skills practiced, barriers, or strengths"></textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Notes</span>
+          <textarea id="attendance-notes" rows="3" placeholder="Add service note, school note, or follow-up"></textarea>
+        </label>
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-attendance="true">Save Attendance Report Entry</button>
+          <button class="secondary-button" type="button" data-route-link="progress">Back to Progress</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Saved attendance and progress entries</h3>
+      ${
+        attendanceEntries.length
+          ? attendanceEntries
+              .map(
+                (entry) => `
+                  <div class="tracker-entry">
+                    <strong>${escapeHtml(entry.sessionTitle || "Session not entered")}</strong>
+                    <p><strong>Date:</strong> ${escapeHtml(entry.date || "No date")}</p>
+                    <p><strong>Status:</strong> ${escapeHtml(entry.status || "Not entered")}</p>
+                    <p><strong>Learned:</strong> ${escapeHtml(entry.learned || "Not entered")}</p>
+                    <p><strong>Notes:</strong> ${escapeHtml(entry.notes || "Not entered")}</p>
+                  </div>
+                `
+              )
+              .join("")
+          : "<p>No attendance or progress entries saved yet.</p>"
+      }
+    </section>
+
+    <section class="detail-card">
+      <h3>Recent rewards and discipline notes</h3>
+      <div class="note-box">
+        <strong>Rewards</strong>
+        ${
+          trackerEntries.length
+            ? trackerEntries
+                .slice(0, 3)
+                .map((entry) => `<p>${escapeHtml(entry.date || "No date")}: ${escapeHtml(entry.task || "No task")} - ${escapeHtml(entry.reward || "No reward")}</p>`)
+                .join("")
+            : "<p>No reward entries yet.</p>"
+        }
+      </div>
+      <div class="note-box">
+        <strong>Discipline follow-up</strong>
+        ${
+          disciplineEntries.length
+            ? disciplineEntries
+                .slice(0, 3)
+                .map((entry) => `<p>${escapeHtml(entry.date || "No date")}: ${escapeHtml(entry.type || "No entry")} - ${escapeHtml(entry.followup || "No follow-up")}</p>`)
+                .join("")
+            : "<p>No discipline entries yet.</p>"
+        }
+      </div>
+      <div class="note-box">
+        <strong>Recent daily check-ins</strong>
+        ${
+          dailyHabitEntries.length
+            ? dailyHabitEntries
+                .slice(0, 3)
+                .map((entry) => `<p>${escapeHtml(entry.date || "No date")}: ${escapeHtml(entry.whatHappened || entry.positiveMoment || "No note entered")}</p>`)
+                .join("")
+            : "<p>No daily check-ins yet.</p>"
+        }
+      </div>
+    </section>
+  `;
+}
+
 function renderProgressTracker() {
   if (!hasPremiumAccess()) {
     screenTitle.textContent = "Progress Tracker";
@@ -3856,6 +4132,9 @@ function renderProgressTracker() {
             `
           )
           .join("")}
+      </div>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals Tab</button>
       </div>
     </section>
 
@@ -4065,7 +4344,7 @@ function renderProgressTracker() {
           : `<p>Finish all lessons to unlock the completion certificate inside the tracker.</p>`
       }
       <div class="hero-actions hero-actions--stacked">
-        <a class="resource-link" href="rooted-parenting-attendance-progress-report.html" target="_blank" rel="noopener noreferrer">Attendance and Progress Report</a>
+        <button class="resource-link" type="button" data-route-link="report">Attendance and Progress Report</button>
         ${
           completedCount === totalLessons && totalLessons > 0
             ? `<a class="resource-link" href="rooted-parenting-completion-certificate.html" target="_blank" rel="noopener noreferrer">Open Auto-Filled Certificate</a>`
@@ -4583,7 +4862,7 @@ function renderWorksheets() {
         <a class="resource-link" href="rooted-parenting-court-order-language.html" target="_blank" rel="noopener noreferrer">Sample Court Order Language</a>
         <a class="resource-link" href="rooted-parenting-program-manual.html" target="_blank" rel="noopener noreferrer">Program Manual</a>
         <a class="resource-link" href="rooted-parenting-pre-post-assessment.html">Pre/Post Parenting Assessment</a>
-        <a class="resource-link" href="rooted-parenting-attendance-progress-report.html" target="_blank" rel="noopener noreferrer">Attendance and Progress Report</a>
+        <button class="resource-link" type="button" data-route-link="report">Attendance and Progress Report</button>
         <a class="resource-link" href="rooted-parenting-completion-certificate.html" target="_blank" rel="noopener noreferrer">Completion Certificate Template</a>
       </div>
     </section>
@@ -4735,6 +5014,12 @@ function renderRoute() {
       break;
     case "progress":
       renderProgressTracker();
+      break;
+    case "goals":
+      renderGoals();
+      break;
+    case "report":
+      renderAttendanceProgressReport();
       break;
     case "teacher":
       renderTeacher();
@@ -4933,6 +5218,8 @@ function updateTabState(section) {
     course: "learning",
     path: "learning",
     progress: "progress",
+    report: "progress",
+    goals: "goals",
     supervisor: "team",
     support: "support",
     checkin: "checkin",
@@ -5030,6 +5317,20 @@ document.addEventListener("click", (event) => {
       supportThatHelped,
       positiveMoment
     });
+    renderRoute();
+    return;
+  }
+
+  const saveGoalsButton = event.target.closest("[data-save-goals]");
+  if (saveGoalsButton) {
+    const nextGoals = defaultGoals.map((goal, index) => ({
+      id: goal.id,
+      title: document.getElementById(`goal-title-${index}`)?.value.trim() || goal.title,
+      progress: Math.max(0, Math.min(100, Number(document.getElementById(`goal-progress-${index}`)?.value || goal.progress))),
+      parentNote: document.getElementById(`goal-parent-note-${index}`)?.value.trim() || "",
+      providerNote: document.getElementById(`goal-provider-note-${index}`)?.value.trim() || ""
+    }));
+    saveSharedGoals(nextGoals);
     renderRoute();
     return;
   }
