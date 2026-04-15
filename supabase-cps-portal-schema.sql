@@ -117,6 +117,41 @@ create table if not exists public.family_support_plans (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.family_schedule_events (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  created_by_user_id uuid not null references auth.users(id) on delete cascade,
+  created_by_role text not null check (created_by_role in ('parent', 'staff', 'admin', 'teacher')),
+  event_type text,
+  title text not null,
+  event_date date not null,
+  event_time text,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.family_documents (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  uploaded_by_user_id uuid not null references auth.users(id) on delete cascade,
+  uploaded_by_role text not null check (uploaded_by_role in ('parent', 'staff', 'admin', 'teacher')),
+  document_type text,
+  file_name text not null,
+  file_size bigint,
+  mime_type text,
+  storage_bucket text not null default 'family-documents',
+  storage_path text not null,
+  notes text,
+  visible_to_parent boolean not null default true,
+  visible_to_staff boolean not null default true,
+  visible_to_teacher boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+insert into storage.buckets (id, name, public)
+values ('family-documents', 'family-documents', false)
+on conflict (id) do nothing;
+
 alter table public.profiles enable row level security;
 alter table public.families enable row level security;
 alter table public.family_children enable row level security;
@@ -129,6 +164,8 @@ alter table public.completion_records enable row level security;
 alter table public.family_messages enable row level security;
 alter table public.family_shared_goals enable row level security;
 alter table public.family_support_plans enable row level security;
+alter table public.family_schedule_events enable row level security;
+alter table public.family_documents enable row level security;
 
 drop policy if exists "profiles_self_select" on public.profiles;
 create policy "profiles_self_select"
@@ -577,5 +614,173 @@ with check (
     select 1 from public.families f
     where f.id = family_support_plans.family_id
       and f.invited_staff_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "schedule_parent_full_access" on public.family_schedule_events;
+create policy "schedule_parent_full_access"
+on public.family_schedule_events
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.families f
+    where f.id = family_schedule_events.family_id
+      and f.parent_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.families f
+    where f.id = family_schedule_events.family_id
+      and f.parent_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "schedule_staff_read_write" on public.family_schedule_events;
+create policy "schedule_staff_read_write"
+on public.family_schedule_events
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_schedule_events.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_schedule_events.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_schedule_events.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_schedule_events.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "documents_parent_full_access" on public.family_documents;
+create policy "documents_parent_full_access"
+on public.family_documents
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.families f
+    where f.id = family_documents.family_id
+      and f.parent_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.families f
+    where f.id = family_documents.family_id
+      and f.parent_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "documents_staff_read_write" on public.family_documents;
+create policy "documents_staff_read_write"
+on public.family_documents
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_documents.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_documents.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_documents.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_documents.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "family_documents_storage_parent_access" on storage.objects;
+create policy "family_documents_storage_parent_access"
+on storage.objects
+for all
+to authenticated
+using (
+  bucket_id = 'family-documents'
+  and exists (
+    select 1
+    from public.families f
+    where f.id::text = split_part(name, '/', 1)
+      and f.parent_user_id = auth.uid()
+  )
+)
+with check (
+  bucket_id = 'family-documents'
+  and exists (
+    select 1
+    from public.families f
+    where f.id::text = split_part(name, '/', 1)
+      and f.parent_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "family_documents_storage_staff_access" on storage.objects;
+create policy "family_documents_storage_staff_access"
+on storage.objects
+for all
+to authenticated
+using (
+  bucket_id = 'family-documents'
+  and (
+    exists (
+      select 1
+      from public.staff_family_assignments sfa
+      where sfa.family_id::text = split_part(name, '/', 1)
+        and sfa.staff_user_id = auth.uid()
+    )
+    or exists (
+      select 1
+      from public.families f
+      where f.id::text = split_part(name, '/', 1)
+        and f.invited_staff_user_id = auth.uid()
+    )
+  )
+)
+with check (
+  bucket_id = 'family-documents'
+  and (
+    exists (
+      select 1
+      from public.staff_family_assignments sfa
+      where sfa.family_id::text = split_part(name, '/', 1)
+        and sfa.staff_user_id = auth.uid()
+    )
+    or exists (
+      select 1
+      from public.families f
+      where f.id::text = split_part(name, '/', 1)
+        and f.invited_staff_user_id = auth.uid()
+    )
   )
 );

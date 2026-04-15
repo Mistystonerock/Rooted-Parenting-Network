@@ -11,9 +11,12 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">ROOTED PARENTING NETWORK</p>
-        <h1>Staff Portal</h1>
+      <div class="brand-lockup">
+        <img class="brand-mark" src="icons/rooted-parenting-icon.svg" alt="Rooted Parenting Network logo" />
+        <div>
+          <p class="eyebrow">ROOTED PARENTING NETWORK</p>
+          <h1>Staff Portal</h1>
+        </div>
       </div>
       <button class="top-action" id="staff-signout" type="button">Sign Out</button>
     </header>
@@ -141,10 +144,10 @@
 
       const familyIds = (assignments || []).map((item) => item.family_id);
       if (!familyIds.length) {
-        return { families: [], children: [], logs: [], completions: [], assessments: [], sharedGoals: [], supportPlans: [] };
+        return { families: [], children: [], logs: [], completions: [], assessments: [], sharedGoals: [], supportPlans: [], scheduleEvents: [] };
       }
 
-      const [{ data: families }, { data: children }, { data: logs }, { data: completions }, { data: assessments }, { data: sharedGoals }, { data: supportPlans }] =
+      const [{ data: families }, { data: children }, { data: logs }, { data: completions }, { data: assessments }, { data: sharedGoals }, { data: supportPlans }, { data: scheduleEvents }] =
         await Promise.all([
           supabaseClient.from("families").select("*").in("id", familyIds),
           supabaseClient.from("family_children").select("*").in("family_id", familyIds),
@@ -152,7 +155,8 @@
           supabaseClient.from("completion_records").select("*").in("family_id", familyIds),
           supabaseClient.from("assessment_submissions").select("*").in("family_id", familyIds).order("created_at", { ascending: false }),
           supabaseClient.from("family_shared_goals").select("*").in("family_id", familyIds),
-          supabaseClient.from("family_support_plans").select("*").in("family_id", familyIds)
+          supabaseClient.from("family_support_plans").select("*").in("family_id", familyIds),
+          supabaseClient.from("family_schedule_events").select("*").in("family_id", familyIds).order("event_date", { ascending: true })
         ]);
 
       let messages = [];
@@ -171,6 +175,22 @@
         messages = messageRows || [];
       }
 
+      let documents = [];
+      const { data: documentRows, error: documentError } = await supabaseClient
+        .from("family_documents")
+        .select("*")
+        .in("family_id", familyIds)
+        .order("created_at", { ascending: false });
+
+      if (documentError) {
+        const message = String(documentError.message || "").toLowerCase();
+        if (!(message.includes("family_documents") || message.includes("does not exist") || message.includes("schema cache"))) {
+          throw documentError;
+        }
+      } else {
+        documents = documentRows || [];
+      }
+
       return {
         families: families || [],
         children: children || [],
@@ -179,7 +199,9 @@
         assessments: assessments || [],
         messages: messages || [],
         sharedGoals: sharedGoals || [],
-        supportPlans: supportPlans || []
+        supportPlans: supportPlans || [],
+        scheduleEvents: scheduleEvents || [],
+        documents: documents || []
       };
     }
 
@@ -299,9 +321,12 @@
         const summaries = buildWeeklySummaries(logs);
         const completion = dataset.completions.find((item) => item.family_id === family.id);
         const latestAssessment = dataset.assessments.find((item) => item.family_id === family.id);
+        const familyAssessments = dataset.assessments.filter((item) => item.family_id === family.id);
         const messages = dataset.messages.filter((message) => message.family_id === family.id);
         const sharedGoals = dataset.sharedGoals.find((item) => item.family_id === family.id)?.goals || [];
         const supportPlan = dataset.supportPlans.find((item) => item.family_id === family.id)?.plan || {};
+        const scheduleEvents = dataset.scheduleEvents.filter((item) => item.family_id === family.id);
+        const documents = dataset.documents.filter((item) => item.family_id === family.id);
 
         return `
           <section class="detail-card">
@@ -355,6 +380,98 @@
                   <button class="secondary-button" type="button" data-send-staff-message="${family.id}">Send Reply</button>
                 </div>
               </div>
+            </div>
+            <div class="note-box">
+              <strong>Shared schedule</strong>
+              ${
+                scheduleEvents.length
+                  ? scheduleEvents
+                      .map(
+                        (item) => `
+                          <div class="summary-entry">
+                            <p><strong>${escapeHtml(item.title)}</strong></p>
+                            <p><strong>Type:</strong> ${escapeHtml(item.event_type || "General event")}</p>
+                            <p><strong>Date:</strong> ${escapeHtml(item.event_date || "No date")}${item.event_time ? ` at ${escapeHtml(item.event_time)}` : ""}</p>
+                            <p><strong>Notes:</strong> ${escapeHtml(item.notes || "No notes entered")}</p>
+                          </div>
+                        `
+                      )
+                      .join("")
+                  : "<p>No shared schedule events yet.</p>"
+              }
+              <div class="tracker-form" style="margin-top:12px;">
+                <label class="tracker-field">
+                  <span>Event type</span>
+                  <select id="staff-schedule-type-${family.id}">
+                    <option value="Court date">Court date</option>
+                    <option value="Provider visit">Provider visit</option>
+                    <option value="Appointment">Appointment</option>
+                    <option value="Teacher-parent conference">Teacher-parent conference</option>
+                    <option value="School meeting">School meeting</option>
+                  </select>
+                </label>
+                <label class="tracker-field">
+                  <span>Title</span>
+                  <input id="staff-schedule-title-${family.id}" type="text" placeholder="Enter event title" />
+                </label>
+                <label class="tracker-field">
+                  <span>Date</span>
+                  <input id="staff-schedule-date-${family.id}" type="date" />
+                </label>
+                <label class="tracker-field">
+                  <span>Time</span>
+                  <input id="staff-schedule-time-${family.id}" type="text" placeholder="Example: 2:00 PM" />
+                </label>
+                <label class="tracker-field">
+                  <span>Notes</span>
+                  <textarea id="staff-schedule-notes-${family.id}" rows="2" placeholder="Add any detail the family should know"></textarea>
+                </label>
+                <div class="hero-actions hero-actions--stacked">
+                  <button class="secondary-button" type="button" data-save-staff-schedule="${family.id}">Save Schedule Event</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-box">
+              <strong>Private documents</strong>
+              ${
+                documents.length
+                  ? documents
+                      .map(
+                        (item) => `
+                          <div class="summary-entry">
+                            <p><strong>${escapeHtml(item.file_name || "Document")}</strong></p>
+                            <p><strong>Type:</strong> ${escapeHtml(item.document_type || "General document")}</p>
+                            <p><strong>Uploaded by:</strong> ${escapeHtml(item.uploaded_by_role || "Team member")}</p>
+                            <p><strong>Notes:</strong> ${escapeHtml(item.notes || "No note entered")}</p>
+                          </div>
+                        `
+                      )
+                      .join("")
+                  : "<p>No private documents uploaded yet.</p>"
+              }
+            </div>
+            <div class="note-box">
+              <strong>Trauma assessments</strong>
+              ${
+                familyAssessments.length
+                  ? familyAssessments
+                      .map((assessment) => {
+                        const ratings = assessment.ratings || {};
+                        const aceItems = Array.isArray(ratings.aceItems) ? ratings.aceItems : [];
+                        return `
+                          <div class="summary-entry">
+                            <p><strong>${escapeHtml(assessment.assessment_type || "Assessment")}</strong></p>
+                            <p><strong>ACE score:</strong> ${escapeHtml(String(ratings.aceScore ?? 0))}</p>
+                            <p><strong>Current concerns:</strong> ${escapeHtml(ratings.concerns || "No concerns entered")}</p>
+                            <p><strong>Protective factors:</strong> ${escapeHtml(assessment.strengths || "No strengths entered")}</p>
+                            <p><strong>Recommended supports:</strong> ${escapeHtml(assessment.growth_area || "No recommendations entered")}</p>
+                            <p><strong>ACE items marked:</strong> ${escapeHtml(aceItems.join(", ") || "None selected")}</p>
+                          </div>
+                        `;
+                      })
+                      .join("")
+                  : "<p>No trauma assessment saved yet.</p>"
+              }
             </div>
             <div class="note-box">
               <strong>Shared goals</strong>
@@ -587,6 +704,50 @@
               const message = String(error.message || "").toLowerCase();
               if (message.includes("family_support_plans") || message.includes("does not exist") || message.includes("schema cache")) {
                 window.alert("Child support plans are not active yet because the newest Supabase SQL has not been run.");
+                return;
+              }
+              window.alert(error.message);
+              return;
+            }
+
+            const refreshedDataset = await loadAssignedFamilies(access.session.user.id);
+            const refreshedInviteCodes = await loadInviteCodes(access.session.user.id);
+            renderPortal(access.profile, refreshedDataset, refreshedInviteCodes);
+            bindInviteCodeActions(access);
+            return;
+          }
+
+          const saveScheduleButton = event.target.closest("[data-save-staff-schedule]");
+          if (saveScheduleButton) {
+            const familyId = saveScheduleButton.dataset.saveStaffSchedule;
+            const title = document.getElementById(`staff-schedule-title-${familyId}`)?.value.trim() || "";
+            const eventDate = document.getElementById(`staff-schedule-date-${familyId}`)?.value || "";
+            const eventType = document.getElementById(`staff-schedule-type-${familyId}`)?.value || "Appointment";
+            const eventTime = document.getElementById(`staff-schedule-time-${familyId}`)?.value.trim() || "";
+            const notes = document.getElementById(`staff-schedule-notes-${familyId}`)?.value.trim() || "";
+
+            if (!title || !eventDate) {
+              window.alert("Please enter both a title and date before saving the schedule event.");
+              return;
+            }
+
+            const { error } = await supabaseClient
+              .from("family_schedule_events")
+              .insert({
+                family_id: familyId,
+                created_by_user_id: access.session.user.id,
+                created_by_role: access.profile.role === "admin" ? "admin" : "staff",
+                event_type: eventType,
+                title,
+                event_date: eventDate,
+                event_time: eventTime,
+                notes
+              });
+
+            if (error) {
+              const message = String(error.message || "").toLowerCase();
+              if (message.includes("family_schedule_events") || message.includes("does not exist") || message.includes("schema cache")) {
+                window.alert("Shared scheduling is not active yet because the newest Supabase SQL has not been run.");
                 return;
               }
               window.alert(error.message);

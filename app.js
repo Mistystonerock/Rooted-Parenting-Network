@@ -1647,6 +1647,10 @@ const supportToolOptions = [
   }
 ];
 
+let supabaseHomeClient = null;
+let currentSupabaseFamilyId = null;
+let currentFamilyScheduleEvents = [];
+
 const teacherTrainingTopics = [
   {
     title: "Trauma-Informed Care at School",
@@ -2791,6 +2795,82 @@ function clearAppNotice() {
   }
 }
 
+function formatScheduleDate(dateValue, timeValue = "") {
+  if (!dateValue) {
+    return "No date";
+  }
+
+  try {
+    const dateText = new Date(`${dateValue}T12:00:00`).toLocaleDateString();
+    return timeValue ? `${dateText} at ${timeValue}` : dateText;
+  } catch (error) {
+    return timeValue ? `${dateValue} at ${timeValue}` : dateValue;
+  }
+}
+
+async function initializeHomeSupabase() {
+  if (supabaseHomeClient || !window.supabase || !window.ROOTED_SUPABASE_URL || !window.ROOTED_SUPABASE_ANON_KEY) {
+    return;
+  }
+
+  supabaseHomeClient = window.supabase.createClient(
+    window.ROOTED_SUPABASE_URL,
+    window.ROOTED_SUPABASE_ANON_KEY
+  );
+}
+
+async function loadHomeFamilySchedule() {
+  await initializeHomeSupabase();
+  if (!supabaseHomeClient) {
+    return;
+  }
+
+  try {
+    const { data: sessionData } = await supabaseHomeClient.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    if (!userId) {
+      currentSupabaseFamilyId = null;
+      currentFamilyScheduleEvents = [];
+      return;
+    }
+
+    const { data: family, error: familyError } = await supabaseHomeClient
+      .from("families")
+      .select("id")
+      .eq("parent_user_id", userId)
+      .maybeSingle();
+
+    if (familyError || !family?.id) {
+      currentSupabaseFamilyId = null;
+      currentFamilyScheduleEvents = [];
+      return;
+    }
+
+    currentSupabaseFamilyId = family.id;
+
+    const { data: scheduleRows, error: scheduleError } = await supabaseHomeClient
+      .from("family_schedule_events")
+      .select("*")
+      .eq("family_id", family.id)
+      .gte("event_date", new Date().toISOString().slice(0, 10))
+      .order("event_date", { ascending: true });
+
+    if (scheduleError) {
+      const message = String(scheduleError.message || "").toLowerCase();
+      if (message.includes("family_schedule_events") || message.includes("does not exist") || message.includes("schema cache")) {
+        currentFamilyScheduleEvents = [];
+        return;
+      }
+      currentFamilyScheduleEvents = [];
+      return;
+    }
+
+    currentFamilyScheduleEvents = scheduleRows || [];
+  } catch (error) {
+    currentFamilyScheduleEvents = [];
+  }
+}
+
 function renderAppNotice() {
   const message = getAppNotice();
   if (!message || !appContentRoot.firstElementChild) {
@@ -2919,11 +2999,16 @@ function renderHome() {
   const insights = buildBehaviorInsights(entries);
   const topTrigger = insights.topTriggers[0]?.[0] || "transitions";
   const nextLesson = appContent.learningPath.find((lesson) => !completedLessons.includes(lesson.slug)) || appContent.learningPath[0];
-  const upcomingItems = [
-    "Appointments",
-    "Meetings",
-    "Court dates"
-  ];
+  const upcomingItems = currentFamilyScheduleEvents.length
+    ? currentFamilyScheduleEvents.slice(0, 4).map((item) => ({
+        title: item.title || item.event_type || "Upcoming event",
+        detail: `${item.event_type || "Event"} • ${formatScheduleDate(item.event_date, item.event_time)}`
+      }))
+    : [
+        { title: "Appointments", detail: "Shared schedule will show provider-entered events here." },
+        { title: "Meetings", detail: "Court, school, and provider meetings will appear here." },
+        { title: "Court dates", detail: "Upcoming court dates and visits will show here." }
+      ];
   screenTitle.textContent = "Home";
   appContentRoot.innerHTML = `
     <section class="hero">
@@ -3018,7 +3103,10 @@ function renderHome() {
     <section class="section-card">
       <h2>Upcoming</h2>
       <div class="upcoming-list">
-        ${upcomingItems.map((item) => `<div class="upcoming-item">${item}</div>`).join("")}
+        ${upcomingItems.map((item) => `<div class="upcoming-item"><strong>${escapeHtml(item.title)}</strong><br />${escapeHtml(item.detail)}</div>`).join("")}
+      </div>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="report">Open Attendance and Progress Report</button>
       </div>
     </section>
 
@@ -5880,11 +5968,16 @@ topAction.addEventListener("click", () => {
 });
 
 window.addEventListener("hashchange", renderRoute);
+window.addEventListener("focus", async () => {
+  await loadHomeFamilySchedule();
+  renderRoute();
+});
 
 async function loadAppContent() {
   applyAccessFromQuery();
 
   try {
+    await loadHomeFamilySchedule();
     const response = await fetch("parenting-support-app-content.json");
     if (!response.ok) {
       throw new Error(`Unable to load content: ${response.status}`);
@@ -5925,6 +6018,7 @@ async function loadAppContent() {
       ...behavior
     }));
   } catch (error) {
+    await loadHomeFamilySchedule();
     appContent = fallbackContent;
   }
 

@@ -13,13 +13,18 @@
   <link rel="icon" type="image/svg+xml" href="icons/rooted-parenting-icon.svg" />
   <link rel="apple-touch-icon" href="icons/rooted-parenting-icon.svg" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">Rooted Parenting Network</p>
-        <h1 id="screen-title">Home</h1>
+      <div class="brand-lockup">
+        <img class="brand-mark" src="icons/rooted-parenting-icon.svg" alt="Rooted Parenting Network logo" />
+        <div>
+          <p class="eyebrow">Rooted Parenting Network</p>
+          <h1 id="screen-title">Home</h1>
+        </div>
       </div>
       <button class="top-action" id="home-quick-action" type="button">Real-Time Help</button>
     </header>

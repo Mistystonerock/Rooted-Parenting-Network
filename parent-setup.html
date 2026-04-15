@@ -11,9 +11,12 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">ROOTED PARENTING NETWORK</p>
-        <h1>Family Setup</h1>
+      <div class="brand-lockup">
+        <img class="brand-mark" src="icons/rooted-parenting-icon.svg" alt="Rooted Parenting Network logo" />
+        <div>
+          <p class="eyebrow">ROOTED PARENTING NETWORK</p>
+          <h1>Family Setup</h1>
+        </div>
       </div>
       <button class="top-action" id="parent-signout" type="button">Sign Out</button>
     </header>
@@ -84,6 +87,48 @@
           </label>
           <div class="hero-actions hero-actions--stacked">
             <button class="primary-button" type="button" id="send-parent-message">Send Message</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h2>Shared Schedule</h2>
+        <p>Providers, agencies, and teachers can add court dates, visits, appointments, and teacher-parent conferences here so families can see upcoming events in one place.</p>
+        <div class="note-box" id="schedule-status-box">
+          <p>Save your family profile first to activate the shared schedule.</p>
+        </div>
+        <div id="family-schedule-thread" class="detail-stack"></div>
+      </section>
+
+      <section class="section-card">
+        <h2>Private Documents</h2>
+        <p>Upload case plans, court papers, school paperwork, and homework here so the family and assigned provider can keep important documents in one protected place.</p>
+        <div class="note-box" id="documents-status-box">
+          <p>Save your family profile first to activate private document storage.</p>
+        </div>
+        <div id="family-documents-thread" class="detail-stack"></div>
+        <div class="tracker-form">
+          <label class="tracker-field">
+            <span>Document type</span>
+            <select id="document-type">
+              <option value="Case plan">Case plan</option>
+              <option value="Court paper">Court paper</option>
+              <option value="Homework">Homework</option>
+              <option value="School form">School form</option>
+              <option value="Provider form">Provider form</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label class="tracker-field">
+            <span>Document file</span>
+            <input id="document-file" type="file" />
+          </label>
+          <label class="tracker-field">
+            <span>Document note</span>
+            <textarea id="document-note" rows="2" placeholder="Add a short note about this file"></textarea>
+          </label>
+          <div class="hero-actions hero-actions--stacked">
+            <button class="primary-button" type="button" id="upload-document-button">Upload Document</button>
           </div>
         </div>
       </section>
@@ -223,6 +268,55 @@
           </label>
         </div>
       </section>
+
+      <section class="section-card">
+        <h2>Trauma Assessment</h2>
+        <p>This section can hold a structured trauma screen like an ACE review so the team can understand history without losing sight of strengths, safety, and healing.</p>
+        <div class="note-box" id="assessment-status-box">
+          <p>Save your family profile first to activate trauma assessments.</p>
+        </div>
+        <div class="tracker-form">
+          <label class="tracker-field">
+            <span>Assessment type</span>
+            <select id="assessment-type">
+              <option value="ACE">ACE</option>
+              <option value="Trauma History Review">Trauma History Review</option>
+              <option value="School Trauma Concerns">School Trauma Concerns</option>
+            </select>
+          </label>
+          <div class="goal-card">
+            <p><strong>ACE Checklist</strong></p>
+            <div class="tracker-field">
+              <label><input class="ace-checkbox" type="checkbox" value="emotional_abuse" /> Emotional abuse</label>
+              <label><input class="ace-checkbox" type="checkbox" value="physical_abuse" /> Physical abuse</label>
+              <label><input class="ace-checkbox" type="checkbox" value="sexual_abuse" /> Sexual abuse</label>
+              <label><input class="ace-checkbox" type="checkbox" value="emotional_neglect" /> Emotional neglect</label>
+              <label><input class="ace-checkbox" type="checkbox" value="physical_neglect" /> Physical neglect</label>
+              <label><input class="ace-checkbox" type="checkbox" value="domestic_violence" /> Domestic violence in the home</label>
+              <label><input class="ace-checkbox" type="checkbox" value="substance_use" /> Caregiver substance misuse</label>
+              <label><input class="ace-checkbox" type="checkbox" value="mental_illness" /> Caregiver mental health concerns</label>
+              <label><input class="ace-checkbox" type="checkbox" value="parent_separation" /> Parent separation or divorce</label>
+              <label><input class="ace-checkbox" type="checkbox" value="incarceration" /> Household incarceration</label>
+            </div>
+          </div>
+          <label class="tracker-field">
+            <span>Current trauma concerns</span>
+            <textarea id="assessment-concerns" rows="3" placeholder="Describe current concerns, stress patterns, or behavior concerns"></textarea>
+          </label>
+          <label class="tracker-field">
+            <span>Strengths and protective factors</span>
+            <textarea id="assessment-strengths" rows="3" placeholder="What supports, strengths, and protective factors are already present"></textarea>
+          </label>
+          <label class="tracker-field">
+            <span>Recommended supports</span>
+            <textarea id="assessment-recommendations" rows="3" placeholder="What trauma-informed supports would help most right now"></textarea>
+          </label>
+          <div class="hero-actions hero-actions--stacked">
+            <button class="primary-button" type="button" id="save-assessment-button">Save Trauma Assessment</button>
+          </div>
+        </div>
+        <div id="family-assessment-thread" class="detail-stack"></div>
+      </section>
     </main>
 
     <footer class="site-footer">
@@ -251,7 +345,13 @@
     const messageBox = document.getElementById("setup-message");
     const inviteStatusBox = document.getElementById("invite-status-box");
     const messagesStatusBox = document.getElementById("messages-status-box");
+    const scheduleStatusBox = document.getElementById("schedule-status-box");
+    const documentsStatusBox = document.getElementById("documents-status-box");
+    const assessmentStatusBox = document.getElementById("assessment-status-box");
     const parentMessagesThread = document.getElementById("parent-messages-thread");
+    const familyScheduleThread = document.getElementById("family-schedule-thread");
+    const familyDocumentsThread = document.getElementById("family-documents-thread");
+    const familyAssessmentThread = document.getElementById("family-assessment-thread");
     let currentUser = null;
     let currentFamilyId = null;
     let currentAssignedCourseSlug = null;
@@ -316,6 +416,65 @@
             )
             .join("")
         : "<p>No messages yet.</p>";
+    }
+
+    function renderSchedule(events) {
+      familyScheduleThread.innerHTML = events.length
+        ? events
+            .map(
+              (event) => `
+                <div class="tracker-entry">
+                  <p><strong>${escapeHtml(event.title)}</strong></p>
+                  <p><strong>Type:</strong> ${escapeHtml(event.event_type || "General event")}</p>
+                  <p><strong>Date:</strong> ${escapeHtml(event.event_date || "No date")}${event.event_time ? ` at ${escapeHtml(event.event_time)}` : ""}</p>
+                  <p><strong>Added by:</strong> ${escapeHtml(event.created_by_role || "Provider")}</p>
+                  <p><strong>Notes:</strong> ${escapeHtml(event.notes || "No notes entered")}</p>
+                </div>
+              `
+            )
+            .join("")
+        : "<p>No shared schedule events yet.</p>";
+    }
+
+    function renderDocuments(documents) {
+      familyDocumentsThread.innerHTML = documents.length
+        ? documents
+            .map(
+              (entry) => `
+                <div class="tracker-entry">
+                  <p><strong>${escapeHtml(entry.file_name || "Document")}</strong></p>
+                  <p><strong>Type:</strong> ${escapeHtml(entry.document_type || "General document")}</p>
+                  <p><strong>Uploaded by:</strong> ${escapeHtml(entry.uploaded_by_role || "Team member")}</p>
+                  <p><strong>Note:</strong> ${escapeHtml(entry.notes || "No note entered")}</p>
+                  <p><small>${escapeHtml(formatMessageDate(entry.created_at))}</small></p>
+                  ${entry.signed_url ? `<p><a href="${escapeHtml(entry.signed_url)}" target="_blank" rel="noopener noreferrer">Open document</a></p>` : ""}
+                </div>
+              `
+            )
+            .join("")
+        : "<p>No private documents uploaded yet.</p>";
+    }
+
+    function renderAssessments(assessments) {
+      familyAssessmentThread.innerHTML = assessments.length
+        ? assessments
+            .map((assessment) => {
+              const ratings = assessment.ratings || {};
+              const aceItems = Array.isArray(ratings.aceItems) ? ratings.aceItems : [];
+              return `
+                <div class="tracker-entry">
+                  <p><strong>${escapeHtml(assessment.assessment_type || "Assessment")}</strong></p>
+                  <p><strong>ACE score:</strong> ${escapeHtml(String(ratings.aceScore ?? 0))}</p>
+                  <p><strong>ACE items marked:</strong> ${escapeHtml(aceItems.join(", ") || "None selected")}</p>
+                  <p><strong>Current concerns:</strong> ${escapeHtml(ratings.concerns || "No concerns entered")}</p>
+                  <p><strong>Protective factors:</strong> ${escapeHtml(assessment.strengths || "No strengths entered")}</p>
+                  <p><strong>Recommended supports:</strong> ${escapeHtml(assessment.growth_area || "No recommendations entered")}</p>
+                  <p><small>${escapeHtml(formatMessageDate(assessment.created_at))}</small></p>
+                </div>
+              `;
+            })
+            .join("")
+        : "<p>No trauma assessment saved yet.</p>";
     }
 
     function fillSharedGoals(goals) {
@@ -398,6 +557,102 @@
       renderParentMessages(data || []);
     }
 
+    async function loadFamilySchedule() {
+      if (!currentFamilyId) {
+        scheduleStatusBox.innerHTML = "<p>Save your family profile first to activate the shared schedule.</p>";
+        renderSchedule([]);
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("family_schedule_events")
+        .select("*")
+        .eq("family_id", currentFamilyId)
+        .order("event_date", { ascending: true });
+
+      if (error) {
+        const message = String(error.message || "").toLowerCase();
+        if (message.includes("family_schedule_events") || message.includes("does not exist") || message.includes("schema cache")) {
+          scheduleStatusBox.innerHTML = "<p>Shared scheduling is not active yet because the latest Supabase SQL has not been run.</p>";
+          renderSchedule([]);
+          return;
+        }
+        throw error;
+      }
+
+      scheduleStatusBox.innerHTML = "<p>Shared schedule is active for this family record.</p>";
+      renderSchedule(data || []);
+    }
+
+    async function loadFamilyDocuments() {
+      if (!currentFamilyId) {
+        documentsStatusBox.innerHTML = "<p>Save your family profile first to activate private document storage.</p>";
+        renderDocuments([]);
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("family_documents")
+        .select("*")
+        .eq("family_id", currentFamilyId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        const message = String(error.message || "").toLowerCase();
+        if (message.includes("family_documents") || message.includes("does not exist") || message.includes("schema cache")) {
+          documentsStatusBox.innerHTML = "<p>Private documents are not active yet because the latest Supabase SQL has not been run.</p>";
+          renderDocuments([]);
+          return;
+        }
+        throw error;
+      }
+
+      const documents = await Promise.all((data || []).map(async (entry) => {
+        if (!entry.storage_path) {
+          return entry;
+        }
+
+        const { data: signed } = await supabaseClient.storage
+          .from("family-documents")
+          .createSignedUrl(entry.storage_path, 1800);
+
+        return {
+          ...entry,
+          signed_url: signed?.signedUrl || ""
+        };
+      }));
+
+      documentsStatusBox.innerHTML = "<p>Private document storage is active for this family record.</p>";
+      renderDocuments(documents);
+    }
+
+    async function loadFamilyAssessments() {
+      if (!currentFamilyId) {
+        assessmentStatusBox.innerHTML = "<p>Save your family profile first to activate trauma assessments.</p>";
+        renderAssessments([]);
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("assessment_submissions")
+        .select("*")
+        .eq("family_id", currentFamilyId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        const message = String(error.message || "").toLowerCase();
+        if (message.includes("assessment_submissions") || message.includes("does not exist") || message.includes("schema cache")) {
+          assessmentStatusBox.innerHTML = "<p>Trauma assessments are not active yet because the latest Supabase SQL has not been run.</p>";
+          renderAssessments([]);
+          return;
+        }
+        throw error;
+      }
+
+      assessmentStatusBox.innerHTML = "<p>Trauma assessments are active for this family record.</p>";
+      renderAssessments(data || []);
+    }
+
     async function sendParentMessage() {
       const messageText = document.getElementById("parent-message-input").value.trim();
       if (!currentFamilyId) {
@@ -432,6 +687,106 @@
       document.getElementById("parent-message-input").value = "";
       messagesStatusBox.innerHTML = "<p>Message sent.</p>";
       await loadFamilyMessages();
+    }
+
+    async function uploadFamilyDocument() {
+      if (!currentFamilyId) {
+        documentsStatusBox.innerHTML = "<p>Save your family profile first before uploading documents.</p>";
+        return;
+      }
+
+      const fileInput = document.getElementById("document-file");
+      const file = fileInput.files?.[0];
+      const documentType = document.getElementById("document-type").value || "Other";
+      const note = document.getElementById("document-note").value.trim();
+
+      if (!file) {
+        documentsStatusBox.innerHTML = "<p>Please choose a file first.</p>";
+        return;
+      }
+
+      documentsStatusBox.innerHTML = "<p>Uploading document...</p>";
+
+      const safeFileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "-")}`;
+      const storagePath = `${currentFamilyId}/${safeFileName}`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from("family-documents")
+        .upload(storagePath, file, { upsert: false });
+
+      if (uploadError) {
+        documentsStatusBox.innerHTML = `<p>${escapeHtml(uploadError.message)}. Make sure the private storage bucket and policies are set up.</p>`;
+        return;
+      }
+
+      const { error: saveError } = await supabaseClient
+        .from("family_documents")
+        .insert({
+          family_id: currentFamilyId,
+          uploaded_by_user_id: currentUser.id,
+          uploaded_by_role: "parent",
+          document_type: documentType,
+          file_name: file.name,
+          file_size: file.size,
+          mime_type: file.type || "application/octet-stream",
+          storage_bucket: "family-documents",
+          storage_path: storagePath,
+          notes: note,
+          visible_to_parent: true,
+          visible_to_staff: true,
+          visible_to_teacher: false
+        });
+
+      if (saveError) {
+        const message = String(saveError.message || "").toLowerCase();
+        if (message.includes("family_documents") || message.includes("does not exist") || message.includes("schema cache")) {
+          documentsStatusBox.innerHTML = "<p>Your file upload bucket worked, but the document table is not active yet. Run the latest Supabase SQL first.</p>";
+          return;
+        }
+        documentsStatusBox.innerHTML = `<p>${escapeHtml(saveError.message)}</p>`;
+        return;
+      }
+
+      fileInput.value = "";
+      document.getElementById("document-note").value = "";
+      documentsStatusBox.innerHTML = "<p>Document uploaded successfully.</p>";
+      await loadFamilyDocuments();
+    }
+
+    async function saveTraumaAssessment() {
+      if (!currentFamilyId) {
+        assessmentStatusBox.innerHTML = "<p>Save your family profile first before saving an assessment.</p>";
+        return;
+      }
+
+      const assessmentType = document.getElementById("assessment-type").value || "ACE";
+      const aceItems = Array.from(document.querySelectorAll(".ace-checkbox:checked")).map((checkbox) => checkbox.value);
+      const concerns = document.getElementById("assessment-concerns").value.trim();
+      const strengths = document.getElementById("assessment-strengths").value.trim();
+      const recommendations = document.getElementById("assessment-recommendations").value.trim();
+
+      const { error } = await supabaseClient
+        .from("assessment_submissions")
+        .insert({
+          family_id: currentFamilyId,
+          assessment_type: assessmentType,
+          ratings: {
+            aceItems,
+            aceScore: aceItems.length,
+            concerns
+          },
+          strengths,
+          growth_area: recommendations,
+          family_change: concerns
+        });
+
+      if (error) {
+        assessmentStatusBox.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
+        return;
+      }
+
+      assessmentStatusBox.innerHTML = `<p>${escapeHtml(assessmentType)} saved with an ACE score of ${aceItems.length}.</p>`;
+      await loadFamilyAssessments();
     }
 
     async function getInviteCodeRecord(rawCode) {
@@ -578,7 +933,10 @@
       if (!family) {
         document.getElementById("setup-invite-code").value = window.localStorage.getItem(pendingInviteCodeKey) || "";
         addChildInput("");
+        await loadFamilySchedule();
+        await loadFamilyDocuments();
         await loadSharedFamilyPlan();
+        await loadFamilyAssessments();
         await loadFamilyMessages();
         return;
       }
@@ -615,7 +973,10 @@
       if (family.invite_code_used) {
         inviteStatusBox.innerHTML = "<p>This family is already connected to an agency invite code.</p>";
       }
+      await loadFamilySchedule();
+      await loadFamilyDocuments();
       await loadSharedFamilyPlan();
+      await loadFamilyAssessments();
       await loadFamilyMessages();
     }
 
@@ -783,12 +1144,17 @@
       }
 
       messageBox.innerHTML = "<p>Family profile saved successfully. You can now use this family record in the parent app and any connected agency portal assignment.</p>";
+      await loadFamilySchedule();
+      await loadFamilyDocuments();
+      await loadFamilyAssessments();
       await loadFamilyMessages();
     }
 
     document.getElementById("add-child-button").addEventListener("click", () => addChildInput(""));
     document.getElementById("save-family-button").addEventListener("click", saveParentProfile);
     document.getElementById("send-parent-message").addEventListener("click", sendParentMessage);
+    document.getElementById("upload-document-button").addEventListener("click", uploadFamilyDocument);
+    document.getElementById("save-assessment-button").addEventListener("click", saveTraumaAssessment);
     document.getElementById("parent-signout").addEventListener("click", async () => {
       await supabaseClient.auth.signOut();
       window.location.href = "parent-login.html";

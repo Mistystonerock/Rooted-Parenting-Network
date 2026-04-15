@@ -1,14 +1,14 @@
 :root {
-  --bg: #f6f1ea;
+  --bg: #f5ede3;
   --surface: #fffdf9;
-  --surface-soft: #f0efe8;
-  --surface-strong: #e6e0d6;
-  --text: #2f3538;
-  --muted: #6e7478;
-  --accent: #7f8f79;
-  --accent-strong: #5f6f5a;
-  --line: #ddd6ca;
-  --shadow: 0 8px 24px rgba(37, 50, 56, 0.08);
+  --surface-soft: #efe5d8;
+  --surface-strong: #e4d8c7;
+  --text: #2f312f;
+  --muted: #6d6a66;
+  --accent: #6f8871;
+  --accent-strong: #506755;
+  --line: #d8ccbd;
+  --shadow: 0 10px 26px rgba(56, 56, 46, 0.08);
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 12px;
@@ -23,8 +23,10 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  font-family: "Segoe UI", Calibri, Arial, sans-serif;
-  background: linear-gradient(180deg, #f7f4ee 0%, var(--bg) 100%);
+  font-family: "Trebuchet MS", "Segoe UI", Calibri, Arial, sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.55), transparent 38%),
+    linear-gradient(180deg, #faf3ea 0%, var(--bg) 100%);
   color: var(--text);
 }
 
@@ -53,8 +55,22 @@ button {
   justify-content: space-between;
   gap: 16px;
   padding: 8px 2px 18px;
-  background: linear-gradient(180deg, rgba(246, 241, 234, 0.96) 0%, rgba(246, 241, 234, 0.9) 72%, rgba(246, 241, 234, 0) 100%);
+  background: linear-gradient(180deg, rgba(245, 237, 227, 0.97) 0%, rgba(245, 237, 227, 0.92) 72%, rgba(245, 237, 227, 0) 100%);
   backdrop-filter: blur(6px);
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow);
 }
 
 .eyebrow {
@@ -73,7 +89,7 @@ button {
 
 .top-action {
   border: 0;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, #7f9b7f 100%);
   color: white;
   min-height: 50px;
   padding: 0 18px;
@@ -90,7 +106,9 @@ button {
 .hero {
   padding: 22px 20px;
   border-radius: 28px;
-  background: linear-gradient(135deg, #fffdf8 0%, #f1eee6 100%);
+  background:
+    radial-gradient(circle at top right, rgba(143, 162, 125, 0.16), transparent 34%),
+    linear-gradient(135deg, #fffdf8 0%, #f2e9dd 100%);
   box-shadow: var(--shadow);
 }
 
@@ -234,7 +252,7 @@ button {
 }
 
 .primary-button {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, #7f9b7f 100%);
   color: #fff;
 }
 
@@ -328,6 +346,12 @@ button {
 .tracker-form {
   display: grid;
   gap: 12px;
+}
+
+.tracker-field label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
 }
 
 .tracker-field {
