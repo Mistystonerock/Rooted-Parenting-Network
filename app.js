@@ -1485,6 +1485,10 @@ const accountProfileStorageKey = "rooted-parenting-account-profile";
 const teamSettingsStorageKey = "rooted-parenting-team-settings";
 const goalsStorageKey = "rooted-parenting-shared-goals";
 const carePlanStorageKey = "rooted-parenting-child-support-plan";
+const parentReflectionStorageKey = "rooted-parenting-parent-reflection";
+const providerNotesStorageKey = "rooted-parenting-provider-notes";
+const notificationsStorageKey = "rooted-parenting-notifications";
+const settingsStorageKey = "rooted-parenting-settings";
 const quizFeedbackState = {};
 const accessCodeDefinitions = {
   ROOTEDCARE2026: {
@@ -2506,6 +2510,98 @@ function saveCarePlan(plan) {
   window.localStorage.setItem(carePlanStorageKey, JSON.stringify(plan));
 }
 
+function getParentReflection() {
+  try {
+    const raw = window.localStorage.getItem(parentReflectionStorageKey);
+    return raw
+      ? JSON.parse(raw)
+      : {
+          responseToday: "",
+          didWell: "",
+          doDifferently: "",
+          supportNeeded: "",
+          lessonFit: ""
+        };
+  } catch (error) {
+    return {
+      responseToday: "",
+      didWell: "",
+      doDifferently: "",
+      supportNeeded: "",
+      lessonFit: ""
+    };
+  }
+}
+
+function saveParentReflection(data) {
+  window.localStorage.setItem(parentReflectionStorageKey, JSON.stringify(data));
+}
+
+function getProviderNotes() {
+  try {
+    const raw = window.localStorage.getItem(providerNotesStorageKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveProviderNote(note) {
+  const notes = getProviderNotes();
+  const next = [note, ...notes].slice(0, 20);
+  window.localStorage.setItem(providerNotesStorageKey, JSON.stringify(next));
+}
+
+function getNotificationsData() {
+  try {
+    const raw = window.localStorage.getItem(notificationsStorageKey);
+    return raw
+      ? JSON.parse(raw)
+      : {
+          items: [
+            "Check-in not completed today",
+            "Goal updated",
+            "New lesson ready",
+            "Follow-up may be needed",
+            "Report tools available"
+          ]
+        };
+  } catch (error) {
+    return {
+      items: [
+        "Check-in not completed today",
+        "Goal updated",
+        "New lesson ready",
+        "Follow-up may be needed",
+        "Report tools available"
+      ]
+    };
+  }
+}
+
+function getUserSettings() {
+  try {
+    const raw = window.localStorage.getItem(settingsStorageKey);
+    return raw
+      ? JSON.parse(raw)
+      : {
+          notificationPreference: "Important updates",
+          privacyPreference: "Standard privacy",
+          supportContact: "Use the support and policy links in the app footer."
+        };
+  } catch (error) {
+    return {
+      notificationPreference: "Important updates",
+      privacyPreference: "Standard privacy",
+      supportContact: "Use the support and policy links in the app footer."
+    };
+  }
+}
+
+function saveUserSettings(data) {
+  window.localStorage.setItem(settingsStorageKey, JSON.stringify(data));
+}
+
 function getSupervisorPortalData() {
   try {
     const raw = window.localStorage.getItem(supervisorPortalStorageKey);
@@ -3078,7 +3174,7 @@ function renderHome() {
               ? '<button class="secondary-button" type="button" data-route-link="professional">Open Professional Dashboard</button>'
               : roleType === "school"
                 ? '<button class="secondary-button" type="button" data-route-link="teacher">Open School Support</button>'
-                : '<button class="secondary-button" type="button" data-route-link="goals">Open Parent Goals</button>'
+                : '<button class="secondary-button" type="button" data-route-link="goals">View Goals</button>'
         }
       </div>
     </section>
@@ -3112,8 +3208,11 @@ function renderHome() {
     <section class="section-card">
       <h2>Quick actions</h2>
       <div class="hero-actions hero-actions--stacked">
-        <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
-        <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals</button>
+        <button class="secondary-button" type="button" data-route-link="checkin">Start Check-In</button>
+        <button class="secondary-button" type="button" data-route-link="goals">View Goals</button>
+        <button class="secondary-button" type="button" data-route-link="learning">Open Lessons</button>
+        <button class="secondary-button" type="button" data-route-link="support">Ask for Help</button>
+        <button class="secondary-button" type="button" data-route-link="team">View Team</button>
         <a class="secondary-button" href="parent-setup.html">Open Messages and Family Hub</a>
         ${
           hasProfessionalAccess()
@@ -3121,6 +3220,16 @@ function renderHome() {
             : ""
         }
         <button class="secondary-button" type="button" data-route-link="report">Open Attendance and Progress Report</button>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Family supports</h2>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="reflection">Parent Self-Reflection</button>
+        <button class="secondary-button" type="button" data-route-link="resources">Resources</button>
+        <button class="secondary-button" type="button" data-route-link="notifications">Notifications</button>
+        <button class="secondary-button" type="button" data-route-link="settings">Settings</button>
       </div>
     </section>
 
@@ -4242,6 +4351,7 @@ function renderProfessionalDashboard() {
       <div class="hero-actions hero-actions--stacked">
         <a class="secondary-button" href="staff-portal.html">Open Staff Portal</a>
         <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals</button>
+        <button class="secondary-button" type="button" data-route-link="notes">Add Recommendation</button>
         <button class="secondary-button" type="button" data-route-link="report">Open Reports</button>
       </div>
     </section>
@@ -4290,6 +4400,190 @@ function renderAdminDashboard() {
       <div class="hero-actions hero-actions--stacked">
         <button class="secondary-button" type="button" data-route-link="professional">Open Professional Dashboard</button>
         <button class="secondary-button" type="button" data-route-link="report">Open Reports</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderParentReflection() {
+  const reflection = getParentReflection();
+  screenTitle.textContent = "Parent Reflection";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Parent self-reflection</h2>
+      <p>This screen helps the parent reflect without shame, notice growth, and choose the next right support step.</p>
+    </section>
+
+    <section class="detail-card">
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>How did I respond today?</span>
+          <textarea id="reflection-response-today" rows="3">${escapeHtml(reflection.responseToday || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>What did I do well?</span>
+          <textarea id="reflection-did-well" rows="3">${escapeHtml(reflection.didWell || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>What do I want to do differently tomorrow?</span>
+          <textarea id="reflection-do-differently" rows="3">${escapeHtml(reflection.doDifferently || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>What support do I need?</span>
+          <textarea id="reflection-support-needed" rows="3">${escapeHtml(reflection.supportNeeded || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>What lesson fits what happened today?</span>
+          <textarea id="reflection-lesson-fit" rows="3">${escapeHtml(reflection.lessonFit || "")}</textarea>
+        </label>
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-parent-reflection="true">Save Reflection</button>
+          <button class="secondary-button" type="button" data-route-link="learning">Open Lessons</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderResources() {
+  screenTitle.textContent = "Resources";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Resources</h2>
+      <p>Connect families to real help, practical reminders, and printable tools across home, school, behavior, court, mental health, trauma, and parenting stress.</p>
+      <div class="pill-row">
+        <span class="pill">Home</span>
+        <span class="pill">School</span>
+        <span class="pill">Behavior</span>
+        <span class="pill">Court</span>
+        <span class="pill">Mental health</span>
+        <span class="pill">Trauma</span>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Immediate support</h2>
+      ${bulletList([
+        "Crisis resources and local emergency support information",
+        "Safety planning reminders for high-stress situations",
+        "School advocacy tips and meeting prep",
+        "Counseling, support group, and family service connections"
+      ])}
+    </section>
+
+    <section class="section-card">
+      <h2>Helpful printables and guides</h2>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="resource-link" type="button" data-route-link="worksheets">Open Worksheets</button>
+        <button class="resource-link" type="button" data-route-link="school">Open School Support</button>
+        <button class="resource-link" type="button" data-route-link="support">Open Real-Time Help</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderNotesRecommendations() {
+  const notes = getProviderNotes();
+  screenTitle.textContent = "Notes";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Notes and recommendations</h2>
+      <p>Use structured notes for concerns, recommendations, follow-up steps, supportive response ideas, and school or court coordination.</p>
+    </section>
+
+    <section class="detail-card">
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>Concern noted</span>
+          <textarea id="provider-note-concern" rows="3"></textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Recommendation</span>
+          <textarea id="provider-note-recommendation" rows="3"></textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Follow-up step</span>
+          <textarea id="provider-note-followup" rows="3"></textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Supportive response ideas</span>
+          <textarea id="provider-note-support" rows="3"></textarea>
+        </label>
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-provider-note="true">Save Recommendation Note</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Saved professional notes</h3>
+      ${
+        notes.length
+          ? notes
+              .map(
+                (note) => `
+                  <div class="tracker-entry">
+                    <p><strong>Concern:</strong> ${escapeHtml(note.concern || "Not entered")}</p>
+                    <p><strong>Recommendation:</strong> ${escapeHtml(note.recommendation || "Not entered")}</p>
+                    <p><strong>Follow-up:</strong> ${escapeHtml(note.followUp || "Not entered")}</p>
+                    <p><strong>Support ideas:</strong> ${escapeHtml(note.supportIdeas || "Not entered")}</p>
+                    <p><small>${escapeHtml(note.date || "")}</small></p>
+                  </div>
+                `
+              )
+              .join("")
+          : "<p>No professional notes saved yet.</p>"
+      }
+    </section>
+  `;
+}
+
+function renderNotifications() {
+  const notifications = getNotificationsData();
+  screenTitle.textContent = "Notifications";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Notifications and alerts</h2>
+      <p>Keep users informed about check-ins, goals, lessons, follow-up needs, flagged concerns, and reports.</p>
+    </section>
+
+    <section class="detail-card">
+      <h3>Current alerts</h3>
+      ${
+        notifications.items.length
+          ? notifications.items.map((item) => `<div class="tracker-entry"><p>${escapeHtml(item)}</p></div>`).join("")
+          : "<p>No alerts yet.</p>"
+      }
+    </section>
+  `;
+}
+
+function renderSettings() {
+  const settings = getUserSettings();
+  screenTitle.textContent = "Settings";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Settings</h2>
+      <p>Manage profile-related preferences, privacy language, notification choices, support access, and account controls.</p>
+    </section>
+
+    <section class="detail-card">
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>Notification settings</span>
+          <input id="settings-notifications" type="text" value="${escapeHtml(settings.notificationPreference || "")}" />
+        </label>
+        <label class="tracker-field">
+          <span>Privacy settings</span>
+          <input id="settings-privacy" type="text" value="${escapeHtml(settings.privacyPreference || "")}" />
+        </label>
+        <label class="tracker-field">
+          <span>Support / help</span>
+          <textarea id="settings-support" rows="3">${escapeHtml(settings.supportContact || "")}</textarea>
+        </label>
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-settings="true">Save Settings</button>
+        </div>
       </div>
     </section>
   `;
@@ -5620,6 +5914,21 @@ function renderRoute() {
     case "admin":
       renderAdminDashboard();
       break;
+    case "reflection":
+      renderParentReflection();
+      break;
+    case "resources":
+      renderResources();
+      break;
+    case "notes":
+      renderNotesRecommendations();
+      break;
+    case "notifications":
+      renderNotifications();
+      break;
+    case "settings":
+      renderSettings();
+      break;
     case "care-plan":
       renderCarePlan();
       break;
@@ -5840,6 +6149,11 @@ function updateTabState(section) {
     "child-profile": "home",
     professional: "team",
     admin: "team",
+    reflection: "checkin",
+    resources: "support",
+    notes: "team",
+    notifications: "home",
+    settings: "home",
     "care-plan": "support",
     supervisor: "team",
     support: "support",
@@ -5975,6 +6289,46 @@ document.addEventListener("click", (event) => {
       careTeamMembers: document.getElementById("child-profile-team")?.value.trim() || ""
     });
     setAppNotice("Child profile saved.");
+    renderRoute();
+    return;
+  }
+
+  const saveParentReflectionButton = event.target.closest("[data-save-parent-reflection]");
+  if (saveParentReflectionButton) {
+    saveParentReflection({
+      responseToday: document.getElementById("reflection-response-today")?.value.trim() || "",
+      didWell: document.getElementById("reflection-did-well")?.value.trim() || "",
+      doDifferently: document.getElementById("reflection-do-differently")?.value.trim() || "",
+      supportNeeded: document.getElementById("reflection-support-needed")?.value.trim() || "",
+      lessonFit: document.getElementById("reflection-lesson-fit")?.value.trim() || ""
+    });
+    setAppNotice("Parent reflection saved.");
+    renderRoute();
+    return;
+  }
+
+  const saveProviderNoteButton = event.target.closest("[data-save-provider-note]");
+  if (saveProviderNoteButton) {
+    saveProviderNote({
+      concern: document.getElementById("provider-note-concern")?.value.trim() || "",
+      recommendation: document.getElementById("provider-note-recommendation")?.value.trim() || "",
+      followUp: document.getElementById("provider-note-followup")?.value.trim() || "",
+      supportIdeas: document.getElementById("provider-note-support")?.value.trim() || "",
+      date: new Date().toLocaleString()
+    });
+    setAppNotice("Recommendation note saved.");
+    renderRoute();
+    return;
+  }
+
+  const saveSettingsButton = event.target.closest("[data-save-settings]");
+  if (saveSettingsButton) {
+    saveUserSettings({
+      notificationPreference: document.getElementById("settings-notifications")?.value.trim() || "",
+      privacyPreference: document.getElementById("settings-privacy")?.value.trim() || "",
+      supportContact: document.getElementById("settings-support")?.value.trim() || ""
+    });
+    setAppNotice("Settings updated.");
     renderRoute();
     return;
   }
