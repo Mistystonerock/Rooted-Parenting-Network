@@ -772,6 +772,23 @@ button {
   background: var(--surface-soft);
 }
 
+.permission-button {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 14px;
+  text-align: left;
+}
+
+.permission-button.is-active {
+  background: var(--surface-strong);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 .support-steps {
   counter-reset: support-step;
 }

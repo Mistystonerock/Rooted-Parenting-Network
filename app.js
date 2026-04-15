@@ -1536,6 +1536,7 @@ const supportToolOptions = [
 const defaultTeamSettings = {
   inviteEmail: "",
   inviteCode: "",
+  selectedPermission: "all 3: view progress only, view behavior patterns, view lesson completion",
   members: [
     { role: "Parent", permission: "view progress only" },
     { role: "Teacher", permission: "view behavior patterns" },
@@ -2251,6 +2252,8 @@ function getTeamSettings() {
     return {
       inviteEmail: saved.inviteEmail || "",
       inviteCode: saved.inviteCode || "",
+      selectedPermission:
+        saved.selectedPermission || defaultTeamSettings.selectedPermission,
       members: Array.isArray(saved.members) && saved.members.length ? saved.members : defaultTeamSettings.members
     };
   } catch (error) {
@@ -2264,6 +2267,8 @@ function saveTeamSettings(settings) {
     JSON.stringify({
       inviteEmail: settings.inviteEmail || "",
       inviteCode: settings.inviteCode || "",
+      selectedPermission:
+        settings.selectedPermission || defaultTeamSettings.selectedPermission,
       members: Array.isArray(settings.members) && settings.members.length ? settings.members : defaultTeamSettings.members
     })
   );
@@ -3456,6 +3461,12 @@ function renderCheckIn() {
 function renderTeam() {
   const team = getTeamSettings();
   const insights = buildBehaviorInsights(getDailyHabitEntries());
+  const permissionOptions = [
+    "all 3: view progress only, view behavior patterns, view lesson completion",
+    "view progress only",
+    "view behavior patterns",
+    "view lesson completion"
+  ];
   screenTitle.textContent = "Team";
   appContentRoot.innerHTML = `
     <section class="section-card">
@@ -3491,11 +3502,16 @@ function renderTeam() {
         <div class="tracker-field">
           <span>Permission options</span>
           <div class="permission-grid">
-            <label><input type="radio" name="team-permission" value="all 3: view progress only, view behavior patterns, view lesson completion" checked /> <span>All 3</span></label>
-            <label><input type="radio" name="team-permission" value="view progress only" /> <span>View progress only</span></label>
-            <label><input type="radio" name="team-permission" value="view behavior patterns" /> <span>View behavior patterns</span></label>
-            <label><input type="radio" name="team-permission" value="view lesson completion" /> <span>View lesson completion</span></label>
+            ${permissionOptions
+              .map((permission) => {
+                const label = permission.startsWith("all 3") ? "All 3" : permission.charAt(0).toUpperCase() + permission.slice(1);
+                return `<button class="permission-button ${team.selectedPermission === permission ? "is-active" : ""}" type="button" data-select-team-permission="${escapeHtml(permission)}">${escapeHtml(label)}</button>`;
+              })
+              .join("")}
           </div>
+        </div>
+        <div class="note-box" id="team-message">
+          <p>Selected permission: ${escapeHtml(team.selectedPermission)}</p>
         </div>
         <div class="hero-actions hero-actions--stacked">
           <button class="primary-button" type="button" data-save-team-settings="true">Invite member</button>
@@ -4642,6 +4658,17 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const permissionButton = event.target.closest("[data-select-team-permission]");
+  if (permissionButton) {
+    const team = getTeamSettings();
+    saveTeamSettings({
+      ...team,
+      selectedPermission: permissionButton.dataset.selectTeamPermission
+    });
+    renderRoute();
+    return;
+  }
+
   const checkInButton = event.target.closest("[data-save-checkin]");
   if (checkInButton) {
     const positiveMoment = document.getElementById("checkin-positive-moment")?.value.trim() || "";
@@ -4836,17 +4863,28 @@ document.addEventListener("click", (event) => {
   const teamSettingsButton = event.target.closest("[data-save-team-settings]");
   if (teamSettingsButton) {
     const team = getTeamSettings();
-    const permission = document.querySelector('input[name="team-permission"]:checked')?.value || "view progress only";
+    const permission = team.selectedPermission || "view progress only";
     const inviteEmail = document.getElementById("team-invite-email")?.value.trim() || "";
     const inviteCode = document.getElementById("team-invite-code")?.value.trim() || "";
+    const teamMessage = document.getElementById("team-message");
+    if (!inviteEmail) {
+      if (teamMessage) {
+        teamMessage.innerHTML = "<p>Enter an email or contact before inviting a member.</p>";
+      }
+      return;
+    }
     const nextMembers = inviteEmail
       ? [...team.members, { role: inviteEmail, permission }]
       : team.members;
     saveTeamSettings({
       inviteEmail,
       inviteCode,
+      selectedPermission: permission,
       members: nextMembers
     });
+    if (teamMessage) {
+      teamMessage.innerHTML = `<p>Added ${escapeHtml(inviteEmail)} with ${escapeHtml(permission)}.</p>`;
+    }
     renderRoute();
     return;
   }
