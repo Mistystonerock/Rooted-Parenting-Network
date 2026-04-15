@@ -96,6 +96,27 @@ create table if not exists public.completion_records (
   certificate_name text
 );
 
+create table if not exists public.family_messages (
+  id uuid primary key default gen_random_uuid(),
+  family_id uuid not null references public.families(id) on delete cascade,
+  sender_user_id uuid not null references auth.users(id) on delete cascade,
+  sender_role text not null check (sender_role in ('parent', 'staff', 'admin')),
+  message_text text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.family_shared_goals (
+  family_id uuid primary key references public.families(id) on delete cascade,
+  goals jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.family_support_plans (
+  family_id uuid primary key references public.families(id) on delete cascade,
+  plan jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 alter table public.profiles enable row level security;
 alter table public.families enable row level security;
 alter table public.family_children enable row level security;
@@ -105,6 +126,9 @@ alter table public.daily_logs enable row level security;
 alter table public.attendance_logs enable row level security;
 alter table public.assessment_submissions enable row level security;
 alter table public.completion_records enable row level security;
+alter table public.family_messages enable row level security;
+alter table public.family_shared_goals enable row level security;
+alter table public.family_support_plans enable row level security;
 
 drop policy if exists "profiles_self_select" on public.profiles;
 create policy "profiles_self_select"
@@ -390,6 +414,168 @@ using (
   or exists (
     select 1 from public.families f
     where f.id = completion_records.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "messages_parent_full_access" on public.family_messages;
+create policy "messages_parent_full_access"
+on public.family_messages
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.families f
+    where f.id = family_messages.family_id
+      and f.parent_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.families f
+    where f.id = family_messages.family_id
+      and f.parent_user_id = auth.uid()
+  )
+  and sender_user_id = auth.uid()
+  and sender_role = 'parent'
+);
+
+drop policy if exists "messages_staff_read_write" on public.family_messages;
+create policy "messages_staff_read_write"
+on public.family_messages
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_messages.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_messages.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+)
+with check (
+  (
+    exists (
+      select 1
+      from public.staff_family_assignments sfa
+      where sfa.family_id = family_messages.family_id
+        and sfa.staff_user_id = auth.uid()
+    )
+    or exists (
+      select 1 from public.families f
+      where f.id = family_messages.family_id
+        and f.invited_staff_user_id = auth.uid()
+    )
+  )
+  and sender_user_id = auth.uid()
+  and sender_role in ('staff', 'admin')
+);
+
+drop policy if exists "shared_goals_parent_full_access" on public.family_shared_goals;
+create policy "shared_goals_parent_full_access"
+on public.family_shared_goals
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.families f
+    where f.id = family_shared_goals.family_id
+      and f.parent_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.families f
+    where f.id = family_shared_goals.family_id
+      and f.parent_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "shared_goals_staff_read_write" on public.family_shared_goals;
+create policy "shared_goals_staff_read_write"
+on public.family_shared_goals
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_shared_goals.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_shared_goals.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_shared_goals.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_shared_goals.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "support_plan_parent_full_access" on public.family_support_plans;
+create policy "support_plan_parent_full_access"
+on public.family_support_plans
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.families f
+    where f.id = family_support_plans.family_id
+      and f.parent_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.families f
+    where f.id = family_support_plans.family_id
+      and f.parent_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "support_plan_staff_read_write" on public.family_support_plans;
+create policy "support_plan_staff_read_write"
+on public.family_support_plans
+for all
+to authenticated
+using (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_support_plans.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_support_plans.family_id
+      and f.invited_staff_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.staff_family_assignments sfa
+    where sfa.family_id = family_support_plans.family_id
+      and sfa.staff_user_id = auth.uid()
+  )
+  or exists (
+    select 1 from public.families f
+    where f.id = family_support_plans.family_id
       and f.invited_staff_user_id = auth.uid()
   )
 );

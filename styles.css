@@ -306,6 +306,25 @@ button {
   color: var(--text);
 }
 
+.app-notice {
+  border: 1px solid #cfd9c8;
+  background: #f4f8f0;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+
+.app-notice strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--accent-strong);
+}
+
+.app-notice p {
+  margin: 0;
+  color: var(--text);
+}
+
 .tracker-form {
   display: grid;
   gap: 12px;

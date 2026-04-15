@@ -141,16 +141,18 @@
 
       const familyIds = (assignments || []).map((item) => item.family_id);
       if (!familyIds.length) {
-        return { families: [], children: [], logs: [], completions: [], assessments: [] };
+        return { families: [], children: [], logs: [], completions: [], assessments: [], sharedGoals: [], supportPlans: [] };
       }
 
-      const [{ data: families }, { data: children }, { data: logs }, { data: completions }, { data: assessments }] =
+      const [{ data: families }, { data: children }, { data: logs }, { data: completions }, { data: assessments }, { data: sharedGoals }, { data: supportPlans }] =
         await Promise.all([
           supabaseClient.from("families").select("*").in("id", familyIds),
           supabaseClient.from("family_children").select("*").in("family_id", familyIds),
           supabaseClient.from("daily_logs").select("*").in("family_id", familyIds).order("log_date", { ascending: false }),
           supabaseClient.from("completion_records").select("*").in("family_id", familyIds),
-          supabaseClient.from("assessment_submissions").select("*").in("family_id", familyIds).order("created_at", { ascending: false })
+          supabaseClient.from("assessment_submissions").select("*").in("family_id", familyIds).order("created_at", { ascending: false }),
+          supabaseClient.from("family_shared_goals").select("*").in("family_id", familyIds),
+          supabaseClient.from("family_support_plans").select("*").in("family_id", familyIds)
         ]);
 
       let messages = [];
@@ -175,7 +177,9 @@
         logs: logs || [],
         completions: completions || [],
         assessments: assessments || [],
-        messages: messages || []
+        messages: messages || [],
+        sharedGoals: sharedGoals || [],
+        supportPlans: supportPlans || []
       };
     }
 
@@ -296,6 +300,8 @@
         const completion = dataset.completions.find((item) => item.family_id === family.id);
         const latestAssessment = dataset.assessments.find((item) => item.family_id === family.id);
         const messages = dataset.messages.filter((message) => message.family_id === family.id);
+        const sharedGoals = dataset.sharedGoals.find((item) => item.family_id === family.id)?.goals || [];
+        const supportPlan = dataset.supportPlans.find((item) => item.family_id === family.id)?.plan || {};
 
         return `
           <section class="detail-card">
@@ -347,6 +353,77 @@
                 </label>
                 <div class="hero-actions hero-actions--stacked">
                   <button class="secondary-button" type="button" data-send-staff-message="${family.id}">Send Reply</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-box">
+              <strong>Shared goals</strong>
+              <div class="tracker-form" style="margin-top:12px;">
+                ${[0, 1, 2, 3, 4].map((index) => {
+                  const goal = sharedGoals[index] || {};
+                  return `
+                    <div class="goal-card">
+                      <label class="tracker-field">
+                        <span>Goal ${index + 1}</span>
+                        <input id="staff-goal-title-${family.id}-${index}" type="text" value="${escapeHtml(goal.title || "")}" placeholder="Enter shared goal" />
+                      </label>
+                      <label class="tracker-field">
+                        <span>Progress percent</span>
+                        <input id="staff-goal-progress-${family.id}-${index}" type="number" min="0" max="100" value="${escapeHtml(String(goal.progress ?? 0))}" />
+                      </label>
+                      <label class="tracker-field">
+                        <span>Parent note</span>
+                        <textarea id="staff-goal-parent-note-${family.id}-${index}" rows="2" placeholder="Parent note">${escapeHtml(goal.parentNote || "")}</textarea>
+                      </label>
+                      <label class="tracker-field">
+                        <span>Provider note</span>
+                        <textarea id="staff-goal-provider-note-${family.id}-${index}" rows="2" placeholder="Provider note">${escapeHtml(goal.providerNote || "")}</textarea>
+                      </label>
+                    </div>
+                  `;
+                }).join("")}
+                <div class="hero-actions hero-actions--stacked">
+                  <button class="secondary-button" type="button" data-save-staff-goals="${family.id}">Save Shared Goals</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-box">
+              <strong>Child support plan</strong>
+              <div class="tracker-form" style="margin-top:12px;">
+                <label class="tracker-field">
+                  <span>Strengths</span>
+                  <textarea id="staff-plan-strengths-${family.id}" rows="2">${escapeHtml(supportPlan.strengths || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>Triggers</span>
+                  <textarea id="staff-plan-triggers-${family.id}" rows="2">${escapeHtml(supportPlan.triggers || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>Warning signs</span>
+                  <textarea id="staff-plan-warning-signs-${family.id}" rows="2">${escapeHtml(supportPlan.warningSigns || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>What helps</span>
+                  <textarea id="staff-plan-what-helps-${family.id}" rows="2">${escapeHtml(supportPlan.whatHelps || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>What to avoid</span>
+                  <textarea id="staff-plan-avoid-${family.id}" rows="2">${escapeHtml(supportPlan.avoid || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>Repair plan</span>
+                  <textarea id="staff-plan-repair-plan-${family.id}" rows="2">${escapeHtml(supportPlan.repairPlan || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>Team commitments</span>
+                  <textarea id="staff-plan-team-commitments-${family.id}" rows="2">${escapeHtml(supportPlan.teamCommitments || "")}</textarea>
+                </label>
+                <label class="tracker-field">
+                  <span>Immediate safety steps</span>
+                  <textarea id="staff-plan-immediate-safety-${family.id}" rows="2">${escapeHtml(supportPlan.immediateSafety || "")}</textarea>
+                </label>
+                <div class="hero-actions hero-actions--stacked">
+                  <button class="secondary-button" type="button" data-save-staff-plan="${family.id}">Save Child Support Plan</button>
                 </div>
               </div>
             </div>
@@ -449,6 +526,80 @@
         renderPortal(access.profile, dataset, inviteCodes);
         bindInviteCodeActions(access);
         portalRoot.addEventListener("click", async (event) => {
+          const saveGoalsButton = event.target.closest("[data-save-staff-goals]");
+          if (saveGoalsButton) {
+            const familyId = saveGoalsButton.dataset.saveStaffGoals;
+            const goals = [0, 1, 2, 3, 4].map((index) => ({
+              title: document.getElementById(`staff-goal-title-${familyId}-${index}`)?.value.trim() || "",
+              progress: Math.max(0, Math.min(100, Number(document.getElementById(`staff-goal-progress-${familyId}-${index}`)?.value || 0))),
+              parentNote: document.getElementById(`staff-goal-parent-note-${familyId}-${index}`)?.value.trim() || "",
+              providerNote: document.getElementById(`staff-goal-provider-note-${familyId}-${index}`)?.value.trim() || ""
+            }));
+
+            const { error } = await supabaseClient
+              .from("family_shared_goals")
+              .upsert({
+                family_id: familyId,
+                goals,
+                updated_at: new Date().toISOString()
+              });
+
+            if (error) {
+              const message = String(error.message || "").toLowerCase();
+              if (message.includes("family_shared_goals") || message.includes("does not exist") || message.includes("schema cache")) {
+                window.alert("Shared goals are not active yet because the newest Supabase SQL has not been run.");
+                return;
+              }
+              window.alert(error.message);
+              return;
+            }
+
+            const refreshedDataset = await loadAssignedFamilies(access.session.user.id);
+            const refreshedInviteCodes = await loadInviteCodes(access.session.user.id);
+            renderPortal(access.profile, refreshedDataset, refreshedInviteCodes);
+            bindInviteCodeActions(access);
+            return;
+          }
+
+          const savePlanButton = event.target.closest("[data-save-staff-plan]");
+          if (savePlanButton) {
+            const familyId = savePlanButton.dataset.saveStaffPlan;
+            const plan = {
+              strengths: document.getElementById(`staff-plan-strengths-${familyId}`)?.value.trim() || "",
+              triggers: document.getElementById(`staff-plan-triggers-${familyId}`)?.value.trim() || "",
+              warningSigns: document.getElementById(`staff-plan-warning-signs-${familyId}`)?.value.trim() || "",
+              whatHelps: document.getElementById(`staff-plan-what-helps-${familyId}`)?.value.trim() || "",
+              avoid: document.getElementById(`staff-plan-avoid-${familyId}`)?.value.trim() || "",
+              repairPlan: document.getElementById(`staff-plan-repair-plan-${familyId}`)?.value.trim() || "",
+              teamCommitments: document.getElementById(`staff-plan-team-commitments-${familyId}`)?.value.trim() || "",
+              immediateSafety: document.getElementById(`staff-plan-immediate-safety-${familyId}`)?.value.trim() || ""
+            };
+
+            const { error } = await supabaseClient
+              .from("family_support_plans")
+              .upsert({
+                family_id: familyId,
+                plan,
+                updated_at: new Date().toISOString()
+              });
+
+            if (error) {
+              const message = String(error.message || "").toLowerCase();
+              if (message.includes("family_support_plans") || message.includes("does not exist") || message.includes("schema cache")) {
+                window.alert("Child support plans are not active yet because the newest Supabase SQL has not been run.");
+                return;
+              }
+              window.alert(error.message);
+              return;
+            }
+
+            const refreshedDataset = await loadAssignedFamilies(access.session.user.id);
+            const refreshedInviteCodes = await loadInviteCodes(access.session.user.id);
+            renderPortal(access.profile, refreshedDataset, refreshedInviteCodes);
+            bindInviteCodeActions(access);
+            return;
+          }
+
           const replyButton = event.target.closest("[data-send-staff-message]");
           if (!replyButton) {
             return;

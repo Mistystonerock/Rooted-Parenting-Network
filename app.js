@@ -1480,9 +1480,11 @@ const teacherCheckInStorageKey = "rooted-parenting-teacher-checkins";
 const supervisorPortalStorageKey = "rooted-parenting-supervisor-portal";
 const accessStorageKey = "rooted-parenting-access-state";
 const accessMessageStorageKey = "rooted-parenting-access-message";
+const appNoticeStorageKey = "rooted-parenting-app-notice";
 const accountProfileStorageKey = "rooted-parenting-account-profile";
 const teamSettingsStorageKey = "rooted-parenting-team-settings";
 const goalsStorageKey = "rooted-parenting-shared-goals";
+const carePlanStorageKey = "rooted-parenting-child-support-plan";
 const quizFeedbackState = {};
 const accessCodeDefinitions = {
   ROOTEDCARE2026: {
@@ -1692,6 +1694,17 @@ const defaultGoals = [
   { id: "goal-4", title: "Build calmer transitions", progress: 24, parentNote: "", providerNote: "" },
   { id: "goal-5", title: "Increase positive follow-through", progress: 33, parentNote: "", providerNote: "" }
 ];
+
+const defaultCarePlan = {
+  strengths: "Creative, caring, and more successful with calm connection and predictable support.",
+  triggers: "Transitions, correction in front of others, feeling rushed, loud conflict, and feeling overwhelmed.",
+  warningSigns: "Louder voice, refusal, pacing, shutdown, tearfulness, leaving the area, or arguing quickly.",
+  whatHelps: "Calm tone, fewer words, one direction at a time, simple choices, co-regulation, movement or reset space, and private follow-up.",
+  avoid: "Public shame, rapid questions, sarcasm, threats, arguing, raised voices, and power struggles.",
+  repairPlan: "Reconnect after calm, name what happened without shame, repair harm, practice the replacement skill, and reset the relationship.",
+  teamCommitments: "Parents, teachers, and providers will use the same trauma-informed language, focus on safety first, and coordinate around what helps the child regulate.",
+  immediateSafety: "If there is immediate risk of harm, move to safety, reduce stimulation, contact emergency supports if needed, and do not try to teach during crisis."
+};
 
 fallbackContent.learningPath[0].sections = [
   {
@@ -2443,6 +2456,29 @@ function saveSharedGoals(goals) {
   window.localStorage.setItem(goalsStorageKey, JSON.stringify(goals));
 }
 
+function getCarePlan() {
+  try {
+    const raw = window.localStorage.getItem(carePlanStorageKey);
+    const saved = raw ? JSON.parse(raw) : {};
+    return {
+      strengths: saved.strengths || defaultCarePlan.strengths,
+      triggers: saved.triggers || defaultCarePlan.triggers,
+      warningSigns: saved.warningSigns || defaultCarePlan.warningSigns,
+      whatHelps: saved.whatHelps || defaultCarePlan.whatHelps,
+      avoid: saved.avoid || defaultCarePlan.avoid,
+      repairPlan: saved.repairPlan || defaultCarePlan.repairPlan,
+      teamCommitments: saved.teamCommitments || defaultCarePlan.teamCommitments,
+      immediateSafety: saved.immediateSafety || defaultCarePlan.immediateSafety
+    };
+  } catch (error) {
+    return { ...defaultCarePlan };
+  }
+}
+
+function saveCarePlan(plan) {
+  window.localStorage.setItem(carePlanStorageKey, JSON.stringify(plan));
+}
+
 function getSupervisorPortalData() {
   try {
     const raw = window.localStorage.getItem(supervisorPortalStorageKey);
@@ -2735,6 +2771,42 @@ function completeOnboarding() {
   window.localStorage.setItem(onboardingStorageKey, "true");
 }
 
+function setAppNotice(message) {
+  window.localStorage.setItem(appNoticeStorageKey, message);
+}
+
+function getAppNotice() {
+  try {
+    return window.localStorage.getItem(appNoticeStorageKey) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function clearAppNotice() {
+  try {
+    window.localStorage.removeItem(appNoticeStorageKey);
+  } catch (error) {
+    return;
+  }
+}
+
+function renderAppNotice() {
+  const message = getAppNotice();
+  if (!message || !appContentRoot.firstElementChild) {
+    return;
+  }
+
+  const notice = document.createElement("section");
+  notice.className = "app-notice";
+  notice.innerHTML = `
+    <strong>Saved</strong>
+    <p>${escapeHtml(message)}</p>
+  `;
+  appContentRoot.prepend(notice);
+  clearAppNotice();
+}
+
 function findBehavior(slug) {
   return appContent.behaviors.find((behavior) => behavior.slug === slug);
 }
@@ -2831,6 +2903,7 @@ function courseCard(course) {
 
 // Home screen content, including public resources and court/CPS packet links.
 function renderHome() {
+  const role = getAccountProfile().role || "Parent / Caregiver";
   const assignedCourse = getAssignedCourse();
   const accessState = getAccessState();
   const accessMessage = getAccessMessage();
@@ -2884,6 +2957,32 @@ function renderHome() {
           <button class="secondary-button" type="button" data-route-link="progress">View behavior patterns</button>
         </div>
       </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Shared child support plan</h2>
+      <p>Keep one trauma-informed plan that tells every adult what helps this child feel safe, what to avoid, and how to respond across home, school, and services.</p>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="primary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Quick actions</h2>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
+        <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals</button>
+        <button class="secondary-button" type="button" data-route-link="report">Open Attendance and Progress Report</button>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Next best step</h2>
+      <p>${
+        role === "Teacher"
+          ? "Start with Teacher Check-In, then open the Child Support Plan so classroom responses stay aligned with the family and provider team."
+          : "Start with today's Check-In, then update the Child Support Plan or Shared Goals so every adult stays consistent."
+      }</p>
     </section>
 
     ${
@@ -3530,6 +3629,13 @@ function renderTools() {
       <p>Real-time help for the moments when a parent, teacher, or professional needs a trauma-informed way to respond.</p>
     </section>
     <section class="section-card">
+      <h2>Child support plan</h2>
+      <p>Open the shared plan for strengths, triggers, warning signs, calming supports, and team response patterns.</p>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="primary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
+      </div>
+    </section>
+    <section class="section-card">
       <h2>What is happening right now?</h2>
       <div class="hero-actions hero-actions--stacked">
         ${supportToolOptions
@@ -3553,6 +3659,10 @@ function renderTools() {
         "Give a simple choice.",
         "Allow reset time."
       ])}
+    </section>
+    <section class="section-card">
+      <h2>Immediate safety</h2>
+      <p>If there is immediate danger to the child or others, move to safety first and contact crisis or emergency support as needed. This app is not a substitute for emergency care.</p>
     </section>
   `;
 }
@@ -3785,6 +3895,21 @@ function renderTeam() {
           : '<div class="hero-actions hero-actions--stacked"><a class="primary-button" href="https://buy.stripe.com/14A28reC065w1KOcwf4ko02" target="_blank" rel="noopener noreferrer">Get Professional Access</a></div>'
       }
     </section>
+    <section class="detail-card">
+      <h3>Team quick access</h3>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
+        <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals</button>
+        <button class="secondary-button" type="button" data-route-link="report">Open Attendance and Progress Report</button>
+      </div>
+    </section>
+    <section class="detail-card">
+      <h3>Shared response plan</h3>
+      <p>Keep one child-centered plan so parents, teachers, and providers respond with the same trauma-informed pattern instead of mixed messages.</p>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
+      </div>
+    </section>
   `;
 }
 
@@ -3910,6 +4035,92 @@ function renderGoals() {
               .join("")
           : "<p>No reward entries saved yet. Add one above when a child reaches a goal or makes progress.</p>"
       }
+    </section>
+  `;
+}
+
+function renderCarePlan() {
+  const carePlan = getCarePlan();
+  screenTitle.textContent = "Care Plan";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Child support plan</h2>
+      <p>This is the shared trauma-informed plan for how adults will understand, support, and respond to this child across home, school, therapy, CPS, court, and community settings.</p>
+      <div class="pill-row">
+        <span class="pill">Strengths-based</span>
+        <span class="pill">Safety first</span>
+        <span class="pill">Cross-system</span>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Strengths and protective factors</h3>
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>What strengths do adults need to keep seeing?</span>
+          <textarea id="care-plan-strengths" rows="3">${escapeHtml(carePlan.strengths)}</textarea>
+        </label>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Triggers and warning signs</h3>
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>What tends to trigger behavior or overwhelm?</span>
+          <textarea id="care-plan-triggers" rows="3">${escapeHtml(carePlan.triggers)}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>What are early warning signs before things get bigger?</span>
+          <textarea id="care-plan-warning-signs" rows="3">${escapeHtml(carePlan.warningSigns)}</textarea>
+        </label>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>What helps and what to avoid</h3>
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>What helps this child regulate and re-engage?</span>
+          <textarea id="care-plan-what-helps" rows="4">${escapeHtml(carePlan.whatHelps)}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>What responses usually make things worse?</span>
+          <textarea id="care-plan-avoid" rows="4">${escapeHtml(carePlan.avoid)}</textarea>
+        </label>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Repair and team response</h3>
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>How should adults repair after a hard moment?</span>
+          <textarea id="care-plan-repair" rows="3">${escapeHtml(carePlan.repairPlan)}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>What shared commitments should the team follow?</span>
+          <textarea id="care-plan-team" rows="3">${escapeHtml(carePlan.teamCommitments)}</textarea>
+        </label>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Immediate safety plan</h3>
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>What should adults do first if behavior becomes unsafe?</span>
+          <textarea id="care-plan-safety" rows="3">${escapeHtml(carePlan.immediateSafety)}</textarea>
+        </label>
+        <div class="action-box">
+          <strong>Important</strong>
+          <p>Use this app for planning and support, not as a replacement for emergency care. If there is immediate danger, use crisis or emergency services right away.</p>
+        </div>
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-care-plan="true">Save Child Support Plan</button>
+          <button class="secondary-button" type="button" data-route-link="support">Back to Support</button>
+        </div>
+      </div>
     </section>
   `;
 }
@@ -5018,6 +5229,9 @@ function renderRoute() {
     case "goals":
       renderGoals();
       break;
+    case "care-plan":
+      renderCarePlan();
+      break;
     case "report":
       renderAttendanceProgressReport();
       break;
@@ -5041,6 +5255,7 @@ function renderRoute() {
       break;
   }
 
+  renderAppNotice();
   updateTabState(section);
 }
 
@@ -5163,6 +5378,17 @@ function renderTeacher() {
       </div>
     </section>
 
+    <section class="section-card">
+      <h2>Shared child support plan</h2>
+      <p>Teachers can open the same child support plan used by parents and providers so classroom responses stay aligned with the child's needs and regulation supports.</p>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="button-card" type="button" data-route-link="care-plan">
+          <strong>Open Child Support Plan</strong>
+          <span>See triggers, warning signs, calming supports, and shared team commitments.</span>
+        </button>
+      </div>
+    </section>
+
     <section class="detail-stack">
       ${teacherTrainingTopics
         .map(
@@ -5220,6 +5446,7 @@ function updateTabState(section) {
     progress: "progress",
     report: "progress",
     goals: "goals",
+    "care-plan": "support",
     supervisor: "team",
     support: "support",
     checkin: "checkin",
@@ -5299,6 +5526,7 @@ document.addEventListener("click", (event) => {
       childResponse: getCheckedValues("checkin-child-response"),
       positiveMoment
     });
+    setAppNotice("Parent check-in saved.");
     renderRoute();
     return;
   }
@@ -5317,6 +5545,7 @@ document.addEventListener("click", (event) => {
       supportThatHelped,
       positiveMoment
     });
+    setAppNotice("Teacher check-in saved.");
     renderRoute();
     return;
   }
@@ -5331,6 +5560,24 @@ document.addEventListener("click", (event) => {
       providerNote: document.getElementById(`goal-provider-note-${index}`)?.value.trim() || ""
     }));
     saveSharedGoals(nextGoals);
+    setAppNotice("Shared goals updated.");
+    renderRoute();
+    return;
+  }
+
+  const saveCarePlanButton = event.target.closest("[data-save-care-plan]");
+  if (saveCarePlanButton) {
+    saveCarePlan({
+      strengths: document.getElementById("care-plan-strengths")?.value.trim() || defaultCarePlan.strengths,
+      triggers: document.getElementById("care-plan-triggers")?.value.trim() || defaultCarePlan.triggers,
+      warningSigns: document.getElementById("care-plan-warning-signs")?.value.trim() || defaultCarePlan.warningSigns,
+      whatHelps: document.getElementById("care-plan-what-helps")?.value.trim() || defaultCarePlan.whatHelps,
+      avoid: document.getElementById("care-plan-avoid")?.value.trim() || defaultCarePlan.avoid,
+      repairPlan: document.getElementById("care-plan-repair")?.value.trim() || defaultCarePlan.repairPlan,
+      teamCommitments: document.getElementById("care-plan-team")?.value.trim() || defaultCarePlan.teamCommitments,
+      immediateSafety: document.getElementById("care-plan-safety")?.value.trim() || defaultCarePlan.immediateSafety
+    });
+    setAppNotice("Child support plan saved.");
     renderRoute();
     return;
   }
@@ -5355,6 +5602,7 @@ document.addEventListener("click", (event) => {
       consequence: consequenceValue,
       notes: notesValue
     });
+    setAppNotice("Reward entry saved.");
     renderRoute();
     return;
   }
@@ -5385,6 +5633,7 @@ document.addEventListener("click", (event) => {
       learned,
       tomorrowFocus
     });
+    setAppNotice("21-day daily check-in saved.");
     renderRoute();
     return;
   }
@@ -5403,6 +5652,7 @@ document.addEventListener("click", (event) => {
       growthArea: document.getElementById("assessment-growth")?.value.trim() || "",
       familyChange: document.getElementById("assessment-change")?.value.trim() || ""
     });
+    setAppNotice("Assessment saved.");
     renderRoute();
     return;
   }
@@ -5436,6 +5686,7 @@ document.addEventListener("click", (event) => {
         resetPlan: document.getElementById("ws-parent-reset")?.value.trim() || ""
       }
     });
+    setAppNotice("Worksheet answers saved.");
     renderRoute();
     return;
   }
@@ -5457,6 +5708,7 @@ document.addEventListener("click", (event) => {
       assignedCourse,
       children: children.length ? children : [clientName].filter(Boolean)
     });
+    setAppNotice("Client profile saved.");
     renderRoute();
     return;
   }
@@ -5535,6 +5787,7 @@ document.addEventListener("click", (event) => {
     if (teamMessage) {
       teamMessage.innerHTML = `<p>Added ${escapeHtml(inviteEmail)} with ${escapeHtml(permission)}.</p>`;
     }
+    setAppNotice("Team settings updated.");
     renderRoute();
     return;
   }
@@ -5559,6 +5812,7 @@ document.addEventListener("click", (event) => {
       learned,
       notes
     });
+    setAppNotice("Attendance and progress entry saved.");
     renderRoute();
     return;
   }
@@ -5583,6 +5837,7 @@ document.addEventListener("click", (event) => {
       reaction,
       followup
     });
+    setAppNotice("Discipline entry saved.");
     renderRoute();
     return;
   }
@@ -5609,6 +5864,7 @@ document.addEventListener("click", (event) => {
       inviteCode
     });
     completeOnboarding();
+    setAppNotice("Account setup saved.");
     setRoute("home");
   }
 });
