@@ -1426,6 +1426,12 @@ const accessCodeDefinitions = {
     professional: true,
     message:
       "Professional access has been unlocked on this device."
+  },
+  ROOTEDOWNER2026: {
+    premiumParent: true,
+    professional: true,
+    message:
+      "Owner test access has been unlocked on this device."
   }
 };
 
