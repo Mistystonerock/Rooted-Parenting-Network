@@ -1510,11 +1510,13 @@ const accessCodeDefinitions = {
 const roleOptions = [
   "Parent / Caregiver",
   "Teacher",
+  "School Staff",
   "Counselor / Therapist",
   "Psychologist / Psychiatrist",
   "CPS Worker",
   "Juvenile Probation",
-  "Court Professional"
+  "Court Professional",
+  "Admin"
 ];
 
 const checkInBehaviorOptions = [
@@ -2356,8 +2358,29 @@ function normalizeClientProfile(profile) {
     caregiverName: nextProfile.caregiverName || "",
     caseNote: nextProfile.caseNote || "",
     assignedCourse: nextProfile.assignedCourse || "",
-    children: children.length ? children : [""]
+    children: children.length ? children : [""],
+    strengths: nextProfile.strengths || "",
+    currentConcerns: nextProfile.currentConcerns || "",
+    triggers: nextProfile.triggers || "",
+    copingTools: nextProfile.copingTools || "",
+    behaviorPatterns: nextProfile.behaviorPatterns || "",
+    schoolNotes: nextProfile.schoolNotes || "",
+    careTeamMembers: nextProfile.careTeamMembers || ""
   };
+}
+
+function getAccountRoleType() {
+  const role = getAccountProfile().role || roleOptions[0];
+  if (role === "Admin") {
+    return "admin";
+  }
+  if (role === "Parent / Caregiver") {
+    return "parent";
+  }
+  if (role === "Teacher" || role === "School Staff") {
+    return "school";
+  }
+  return "professional";
 }
 
 function getClientProfile() {
@@ -2984,6 +3007,7 @@ function courseCard(course) {
 // Home screen content, including public resources and court/CPS packet links.
 function renderHome() {
   const role = getAccountProfile().role || "Parent / Caregiver";
+  const roleType = getAccountRoleType();
   const assignedCourse = getAssignedCourse();
   const accessState = getAccessState();
   const accessMessage = getAccessMessage();
@@ -3023,6 +3047,39 @@ function renderHome() {
       <div class="hero-actions">
         <button class="primary-button" type="button" data-route-link="checkin">Open Today's Check-In</button>
         <button class="secondary-button" type="button" data-route-link="support">Open Real-Time Help</button>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>${
+        roleType === "admin"
+          ? "Admin dashboard"
+          : roleType === "professional"
+            ? "Professional dashboard"
+            : roleType === "school"
+              ? "School support dashboard"
+              : "Parent dashboard"
+      }</h2>
+      <p>${
+        roleType === "admin"
+          ? "Manage users, review role approval needs, monitor reports, and keep content and permissions organized."
+          : roleType === "professional"
+            ? "Review assigned family progress, child profiles, check-ins, goals, recommendations, and shared documentation."
+            : roleType === "school"
+              ? "Use approved school supports, classroom response tools, shared plans, and documentation for student needs."
+              : "Use daily check-ins, child profile, goals, lessons, progress tools, and worksheets to stay steady and organized."
+      }</p>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="child-profile">Open Child Profile</button>
+        ${
+          roleType === "admin"
+            ? '<button class="secondary-button" type="button" data-route-link="admin">Open Admin Dashboard</button>'
+            : roleType === "professional"
+              ? '<button class="secondary-button" type="button" data-route-link="professional">Open Professional Dashboard</button>'
+              : roleType === "school"
+                ? '<button class="secondary-button" type="button" data-route-link="teacher">Open School Support</button>'
+                : '<button class="secondary-button" type="button" data-route-link="goals">Open Parent Goals</button>'
+        }
       </div>
     </section>
 
@@ -3383,9 +3440,19 @@ function renderOnboarding() {
   screenTitle.textContent = "Welcome";
   appContentRoot.innerHTML = `
     <section class="onboarding-card">
-      <p class="mini-label">Login / account type</p>
-      <h2>Welcome</h2>
-      <p>Choose the role that fits this account so the app can support trauma-informed response patterns across home, school, therapy, CPS, court, and other helping systems while keeping your current payments, terms, policies, and support materials in place.</p>
+      <p class="mini-label">Welcome / account type</p>
+      <h2>Rooted Parenting Network</h2>
+      <p>A trauma-informed parenting and child-support platform that helps parents, courts, CPS, counselors, schools, and support teams stay informed, organized, and consistent around a child’s needs.</p>
+      <div class="pill-row">
+        <span class="pill">Safe</span>
+        <span class="pill">Calm</span>
+        <span class="pill">Trauma-informed</span>
+        <span class="pill">Cross-system</span>
+      </div>
+      <div class="note-box">
+        <strong>Choose your path</strong>
+        <p>Parent accounts can access daily check-ins, lessons, goals, progress tracking, resources, and worksheets. Professional accounts are intended for counselors, CPS, courts, caseworkers, mentors, behavioral health workers, and approved school staff. Admin accounts are for platform management and oversight.</p>
+      </div>
       <div class="choice-grid">
         ${roleOptions
           .map(
@@ -3402,6 +3469,10 @@ function renderOnboarding() {
         <span>Join a family team</span>
         <input id="invite-code-input" type="text" value="${escapeHtml(account.inviteCode)}" placeholder="Enter invite code" />
       </label>
+      <div class="note-box">
+        <strong>Professional approval</strong>
+        <p>Professional and school-based accounts should include agency name, role, and work email in the secure portal setup. Approval and assigned-family access remain the long-term production model.</p>
+      </div>
       <button class="primary-button" type="button" data-finish-onboarding="true">Create account</button>
     </section>
   `;
@@ -4040,6 +4111,185 @@ function renderTeam() {
             ? '<a class="secondary-button" href="staff-portal.html">Open Staff Portal</a>'
             : ""
         }
+      </div>
+    </section>
+  `;
+}
+
+function renderChildProfile() {
+  const clientProfile = getClientProfile();
+  screenTitle.textContent = "Child Profile";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Child profile</h2>
+      <p>Keep one child-centered profile with strengths, concerns, triggers, coping tools, behavior patterns, school notes, and care team members so adults can respond consistently.</p>
+      <div class="pill-row">
+        <span class="pill">Family-centered</span>
+        <span class="pill">Cross-system</span>
+        <span class="pill">Trauma-informed</span>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <div class="tracker-form">
+        <label class="tracker-field">
+          <span>Child first name or initials</span>
+          <input id="child-profile-name" type="text" value="${escapeHtml(clientProfile.clientName || "")}" placeholder="Child first name or initials" />
+        </label>
+        <label class="tracker-field">
+          <span>Caregiver name</span>
+          <input id="child-profile-caregiver" type="text" value="${escapeHtml(clientProfile.caregiverName || "")}" placeholder="Parent or caregiver" />
+        </label>
+        <label class="tracker-field">
+          <span>Strengths</span>
+          <textarea id="child-profile-strengths" rows="3" placeholder="What strengths should the team keep seeing?">${escapeHtml(clientProfile.strengths || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Current concerns</span>
+          <textarea id="child-profile-concerns" rows="3" placeholder="Behavior, emotional, school, or family concerns">${escapeHtml(clientProfile.currentConcerns || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Triggers</span>
+          <textarea id="child-profile-triggers" rows="3" placeholder="Transitions, stressors, correction, conflict, overwhelm">${escapeHtml(clientProfile.triggers || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Coping tools and what helps</span>
+          <textarea id="child-profile-coping" rows="3" placeholder="Breaks, movement, calm voice, choices, sensory supports">${escapeHtml(clientProfile.copingTools || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Behavior patterns</span>
+          <textarea id="child-profile-patterns" rows="3" placeholder="What patterns does the team keep noticing?">${escapeHtml(clientProfile.behaviorPatterns || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>School notes</span>
+          <textarea id="child-profile-school" rows="3" placeholder="Teacher notes, school concerns, classroom supports">${escapeHtml(clientProfile.schoolNotes || "")}</textarea>
+        </label>
+        <label class="tracker-field">
+          <span>Care team members</span>
+          <textarea id="child-profile-team" rows="3" placeholder="Parent, therapist, caseworker, CPS, mentor, school contact, court contact">${escapeHtml(clientProfile.careTeamMembers || "")}</textarea>
+        </label>
+        <div class="hero-actions hero-actions--stacked">
+          <button class="primary-button" type="button" data-save-child-profile="true">Save Child Profile</button>
+          <button class="secondary-button" type="button" data-route-link="care-plan">Open Child Support Plan</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderProfessionalDashboard() {
+  if (!hasProfessionalAccess()) {
+    screenTitle.textContent = "Professional Dashboard";
+    appContentRoot.innerHTML = renderProfessionalUpgradeCard({
+      title: "Professional Dashboard is Professional",
+      text: "Professional access includes assigned family review, progress oversight, recommendations, shared documentation, and agency-facing tools."
+    });
+    return;
+  }
+
+  const clientProfile = getClientProfile();
+  const dailyHabitEntries = getDailyHabitEntries();
+  const goals = getSharedGoals();
+  const weeklyReports = buildWeeklySummaryReports(dailyHabitEntries);
+  const insights = buildBehaviorInsights(dailyHabitEntries);
+  screenTitle.textContent = "Professional Dashboard";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Professional dashboard</h2>
+      <p>Review assigned family progress, check-ins, goals, child profile details, recent updates, shared plans, and professional next steps.</p>
+      <div class="pill-row">
+        <span class="pill">${dailyHabitEntries.length} check-ins</span>
+        <span class="pill">${goals.length} goals</span>
+        <span class="pill">${weeklyReports.filter((week) => week.entryCount > 0).length} active weekly summaries</span>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Assigned family snapshot</h3>
+      <p><strong>Child:</strong> ${escapeHtml(clientProfile.clientName || "Not entered")}</p>
+      <p><strong>Caregiver:</strong> ${escapeHtml(clientProfile.caregiverName || "Not entered")}</p>
+      <p><strong>Current concerns:</strong> ${escapeHtml(clientProfile.currentConcerns || clientProfile.caseNote || "Not entered")}</p>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="child-profile">Open Child Profile</button>
+        <button class="secondary-button" type="button" data-route-link="supervisor">Open Professional Review</button>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Recent updates and flags</h3>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <strong>Recent updates</strong>
+          <p>${dailyHabitEntries.length ? "Parent check-ins are saving and available for review." : "No check-ins saved yet."}</p>
+        </div>
+        <div class="metric-card">
+          <strong>Flags or concerns</strong>
+          <p>${escapeHtml(insights.topBehaviors[0]?.[0] || "No major behavior pattern flagged yet")}</p>
+        </div>
+        <div class="metric-card">
+          <strong>Shared goals</strong>
+          <p>${goals.filter((goal) => Number(goal.progress || 0) < 100).length} active goals in progress</p>
+        </div>
+        <div class="metric-card">
+          <strong>Recommended intervention</strong>
+          <p>Continue calm redirection, shorter directions, and shared follow-through across systems.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Meeting and documentation tools</h3>
+      <div class="hero-actions hero-actions--stacked">
+        <a class="secondary-button" href="staff-portal.html">Open Staff Portal</a>
+        <button class="secondary-button" type="button" data-route-link="goals">Open Shared Goals</button>
+        <button class="secondary-button" type="button" data-route-link="report">Open Reports</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminDashboard() {
+  screenTitle.textContent = "Admin";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Admin dashboard</h2>
+      <p>Admin tools keep Rooted Parenting Network organized, safe, and professional through user management, role approval, content oversight, and report review.</p>
+      <div class="pill-row">
+        <span class="pill">Users</span>
+        <span class="pill">Approvals</span>
+        <span class="pill">Content</span>
+        <span class="pill">Reports</span>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>User management</h3>
+      ${bulletList([
+        "Approve or deny professional and school-based accounts.",
+        "Review role type, agency name, and work email requirements.",
+        "Manage who has parent, professional, school, or admin access."
+      ])}
+    </section>
+
+    <section class="detail-card">
+      <h3>Content management</h3>
+      ${bulletList([
+        "Update lessons, worksheets, and printable materials.",
+        "Review trauma-informed wording and agency-safe language.",
+        "Maintain branding, policy links, and support information."
+      ])}
+    </section>
+
+    <section class="detail-card">
+      <h3>Reports and safety oversight</h3>
+      ${bulletList([
+        "Review overall engagement and saved progress patterns.",
+        "Monitor reporting tools and documentation quality.",
+        "Keep confidentiality, permissions, and role-based access organized."
+      ])}
+      <div class="hero-actions hero-actions--stacked">
+        <button class="secondary-button" type="button" data-route-link="professional">Open Professional Dashboard</button>
+        <button class="secondary-button" type="button" data-route-link="report">Open Reports</button>
       </div>
     </section>
   `;
@@ -5361,6 +5611,15 @@ function renderRoute() {
     case "goals":
       renderGoals();
       break;
+    case "child-profile":
+      renderChildProfile();
+      break;
+    case "professional":
+      renderProfessionalDashboard();
+      break;
+    case "admin":
+      renderAdminDashboard();
+      break;
     case "care-plan":
       renderCarePlan();
       break;
@@ -5578,6 +5837,9 @@ function updateTabState(section) {
     progress: "progress",
     report: "progress",
     goals: "goals",
+    "child-profile": "home",
+    professional: "team",
+    admin: "team",
     "care-plan": "support",
     supervisor: "team",
     support: "support",
@@ -5693,6 +5955,26 @@ document.addEventListener("click", (event) => {
     }));
     saveSharedGoals(nextGoals);
     setAppNotice("Shared goals updated.");
+    renderRoute();
+    return;
+  }
+
+  const saveChildProfileButton = event.target.closest("[data-save-child-profile]");
+  if (saveChildProfileButton) {
+    const currentProfile = getClientProfile();
+    saveClientProfile({
+      ...currentProfile,
+      clientName: document.getElementById("child-profile-name")?.value.trim() || "",
+      caregiverName: document.getElementById("child-profile-caregiver")?.value.trim() || "",
+      strengths: document.getElementById("child-profile-strengths")?.value.trim() || "",
+      currentConcerns: document.getElementById("child-profile-concerns")?.value.trim() || "",
+      triggers: document.getElementById("child-profile-triggers")?.value.trim() || "",
+      copingTools: document.getElementById("child-profile-coping")?.value.trim() || "",
+      behaviorPatterns: document.getElementById("child-profile-patterns")?.value.trim() || "",
+      schoolNotes: document.getElementById("child-profile-school")?.value.trim() || "",
+      careTeamMembers: document.getElementById("child-profile-team")?.value.trim() || ""
+    });
+    setAppNotice("Child profile saved.");
     renderRoute();
     return;
   }
@@ -5825,6 +6107,7 @@ document.addEventListener("click", (event) => {
 
   const clientProfileButton = event.target.closest("[data-save-client-profile]");
   if (clientProfileButton) {
+    const currentProfile = getClientProfile();
     const clientName = document.getElementById("client-name")?.value.trim() || "";
     const caregiverName = document.getElementById("caregiver-name")?.value.trim() || "";
     const caseNote = document.getElementById("case-note")?.value.trim() || "";
@@ -5834,6 +6117,7 @@ document.addEventListener("click", (event) => {
       .filter(Boolean);
 
     saveClientProfile({
+      ...currentProfile,
       clientName,
       caregiverName,
       caseNote,
@@ -5847,6 +6131,7 @@ document.addEventListener("click", (event) => {
 
   const addChildButton = event.target.closest("[data-add-child-profile]");
   if (addChildButton) {
+    const currentProfile = getClientProfile();
     const clientName = document.getElementById("client-name")?.value.trim() || "";
     const caregiverName = document.getElementById("caregiver-name")?.value.trim() || "";
     const caseNote = document.getElementById("case-note")?.value.trim() || "";
@@ -5854,6 +6139,7 @@ document.addEventListener("click", (event) => {
       .map((input) => input.value.trim());
 
     saveClientProfile({
+      ...currentProfile,
       clientName,
       caregiverName,
       caseNote,
