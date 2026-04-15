@@ -3558,9 +3558,27 @@ function renderOnboarding() {
         <span class="pill">Trauma-informed</span>
         <span class="pill">Cross-system</span>
       </div>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="primary-button" type="button" data-finish-onboarding="true">Get Started</button>
+        <a class="secondary-button" href="parent-login.html">Parent Access</a>
+        <a class="secondary-button" href="staff-login.html">Professional Access</a>
+        <a class="secondary-button" href="rooted-parenting-network-feature-map.html">Learn More</a>
+      </div>
       <div class="note-box">
         <strong>Choose your path</strong>
         <p>Parent accounts can access daily check-ins, lessons, goals, progress tracking, resources, and worksheets. Professional accounts are intended for counselors, CPS, courts, caseworkers, mentors, behavioral health workers, and approved school staff. Admin accounts are for platform management and oversight.</p>
+      </div>
+      <div class="note-box">
+        <strong>Why it helps families</strong>
+        <p>Families can keep check-ins, goals, lessons, support plans, reflections, and resources in one calm, organized place.</p>
+      </div>
+      <div class="note-box">
+        <strong>Why it helps professionals</strong>
+        <p>Professionals can review progress, see patterns, support shared goals, document recommendations, and stay aligned across systems.</p>
+      </div>
+      <div class="note-box">
+        <strong>Privacy and trust</strong>
+        <p>Rooted Parenting Network is being shaped around role-based access, confidentiality, shared care planning, and family-centered trauma-informed support.</p>
       </div>
       <div class="choice-grid">
         ${roleOptions
@@ -3582,7 +3600,11 @@ function renderOnboarding() {
         <strong>Professional approval</strong>
         <p>Professional and school-based accounts should include agency name, role, and work email in the secure portal setup. Approval and assigned-family access remain the long-term production model.</p>
       </div>
-      <button class="primary-button" type="button" data-finish-onboarding="true">Create account</button>
+      <div class="note-box">
+        <strong>Contact and support</strong>
+        <p>For support, professional access requests, or implementation questions, use the support and policy information linked throughout the app materials.</p>
+      </div>
+      <button class="primary-button" type="button" data-finish-onboarding="true">Create Account</button>
     </section>
   `;
 }

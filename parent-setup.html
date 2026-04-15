@@ -12,13 +12,15 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-lockup">
-        <img class="brand-mark" src="icons/rooted-parenting-icon.svg" alt="Rooted Parenting Network logo" />
         <div>
           <p class="eyebrow">ROOTED PARENTING NETWORK</p>
           <h1>Family Setup</h1>
         </div>
       </div>
-      <button class="top-action" id="parent-signout" type="button">Sign Out</button>
+      <div class="hero-actions" style="margin-top:0;">
+        <button class="secondary-button" id="family-setup-back" type="button">Back</button>
+        <button class="top-action" id="parent-signout" type="button">Sign Out</button>
+      </div>
     </header>
 
     <main class="content">
@@ -1155,6 +1157,14 @@
     document.getElementById("send-parent-message").addEventListener("click", sendParentMessage);
     document.getElementById("upload-document-button").addEventListener("click", uploadFamilyDocument);
     document.getElementById("save-assessment-button").addEventListener("click", saveTraumaAssessment);
+    document.getElementById("family-setup-back").addEventListener("click", () => {
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+
+      window.location.href = "index.html";
+    });
     document.getElementById("parent-signout").addEventListener("click", async () => {
       await supabaseClient.auth.signOut();
       window.location.href = "parent-login.html";
