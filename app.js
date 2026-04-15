@@ -1476,6 +1476,7 @@ const attendanceTrackerStorageKey = "rooted-parenting-attendance-tracker";
 const assessmentStorageKey = "rooted-parenting-assessment";
 const worksheetStorageKey = "rooted-parenting-worksheets";
 const dailyHabitTrackerStorageKey = "rooted-parenting-daily-habit-tracker";
+const teacherCheckInStorageKey = "rooted-parenting-teacher-checkins";
 const supervisorPortalStorageKey = "rooted-parenting-supervisor-portal";
 const accessStorageKey = "rooted-parenting-access-state";
 const accessMessageStorageKey = "rooted-parenting-access-message";
@@ -1547,6 +1548,42 @@ const checkInChildResponseOptions = [
   "needed more time",
   "escalated",
   "resolved",
+  "still struggling"
+];
+
+const teacherCheckInBehaviorOptions = [
+  "refusal",
+  "calling out",
+  "shutting down",
+  "peer conflict",
+  "aggression",
+  "anxiety",
+  "positive day"
+];
+
+const teacherCheckInTriggerOptions = [
+  "transition",
+  "academic frustration",
+  "peer issue",
+  "correction",
+  "sensory overload",
+  "unknown"
+];
+
+const teacherCheckInResponseOptions = [
+  "calm tone",
+  "reduced language",
+  "choice offered",
+  "reset space",
+  "co-regulation",
+  "private follow-up"
+];
+
+const teacherCheckInStudentResponseOptions = [
+  "re-engaged",
+  "needed more time",
+  "escalated",
+  "accepted support",
   "still struggling"
 ];
 
@@ -2438,6 +2475,21 @@ function saveDailyHabitEntry(entry) {
   const entries = getDailyHabitEntries();
   const next = [entry, ...entries].slice(0, 30);
   window.localStorage.setItem(dailyHabitTrackerStorageKey, JSON.stringify(next));
+}
+
+function getTeacherCheckInEntries() {
+  try {
+    const raw = window.localStorage.getItem(teacherCheckInStorageKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveTeacherCheckInEntry(entry) {
+  const entries = getTeacherCheckInEntries();
+  const next = [entry, ...entries].slice(0, 30);
+  window.localStorage.setItem(teacherCheckInStorageKey, JSON.stringify(next));
 }
 
 function getWeekLabelFromSessionTitle(sessionTitle) {
@@ -3515,49 +3567,120 @@ function renderSupportToolDetail(slug) {
 }
 
 function renderCheckIn() {
-  const latestEntry = getDailyHabitEntries()[0] || {};
+  const role = (getAccountProfile().role || "").toLowerCase();
+  const isTeacherView = role === "teacher";
+  const latestEntry = (isTeacherView ? getTeacherCheckInEntries() : getDailyHabitEntries())[0] || {};
   screenTitle.textContent = "Check-In";
-  appContentRoot.innerHTML = `
-    <section class="section-card">
-      <h2>Daily check-in</h2>
-      <p>Quick daily reflection in about one to two minutes.</p>
-    </section>
-    <section class="detail-card">
-      <div class="tracker-form">
-        <label class="tracker-field">
-          <span>How was today overall?</span>
-          <select id="checkin-overall">
-            <option value="calm" ${latestEntry.overall === "calm" ? "selected" : ""}>Calm</option>
-            <option value="mixed" ${latestEntry.overall === "mixed" ? "selected" : ""}>Mixed</option>
-            <option value="stressful" ${latestEntry.overall === "stressful" ? "selected" : ""}>Stressful</option>
-          </select>
-        </label>
-        <div class="tracker-field">
-          <span>What behaviors happened today?</span>
-          ${checkboxList("checkin-behaviors", checkInBehaviorOptions, latestEntry.behaviors || [])}
+  appContentRoot.innerHTML = isTeacherView
+    ? `
+      <section class="section-card">
+        <h2>Teacher check-in</h2>
+        <p>Quick classroom reflection for behavior, response patterns, and trauma-informed support.</p>
+      </section>
+      <section class="detail-card">
+        <div class="tracker-form">
+          <label class="tracker-field">
+            <span>How was the school day overall?</span>
+            <select id="teacher-checkin-overall">
+              <option value="calm" ${latestEntry.overall === "calm" ? "selected" : ""}>Calm</option>
+              <option value="mixed" ${latestEntry.overall === "mixed" ? "selected" : ""}>Mixed</option>
+              <option value="stressful" ${latestEntry.overall === "stressful" ? "selected" : ""}>Stressful</option>
+            </select>
+          </label>
+          <div class="tracker-field">
+            <span>What behaviors showed up today?</span>
+            ${checkboxList("teacher-checkin-behaviors", teacherCheckInBehaviorOptions, latestEntry.behaviors || [])}
+          </div>
+          <div class="tracker-field">
+            <span>What seemed to trigger it?</span>
+            ${checkboxList("teacher-checkin-triggers", teacherCheckInTriggerOptions, latestEntry.triggers || [])}
+          </div>
+          <div class="tracker-field">
+            <span>How did you respond?</span>
+            ${checkboxList("teacher-checkin-responses", teacherCheckInResponseOptions, latestEntry.responses || [])}
+          </div>
+          <div class="tracker-field">
+            <span>How did the student respond?</span>
+            ${checkboxList("teacher-checkin-student-response", teacherCheckInStudentResponseOptions, latestEntry.studentResponse || [])}
+          </div>
+          <label class="tracker-field">
+            <span>What support helped most today?</span>
+            <textarea id="teacher-checkin-support" rows="3" placeholder="Short entry">${escapeHtml(latestEntry.supportThatHelped || "")}</textarea>
+          </label>
+          <label class="tracker-field">
+            <span>Positive moment or small win</span>
+            <textarea id="teacher-checkin-positive-moment" rows="3" placeholder="Short entry">${escapeHtml(latestEntry.positiveMoment || "")}</textarea>
+          </label>
+          <div class="hero-actions hero-actions--stacked">
+            <button class="primary-button" type="button" data-save-teacher-checkin="true">Save Teacher Check-In</button>
+          </div>
         </div>
-        <div class="tracker-field">
-          <span>What triggered the behavior?</span>
-          ${checkboxList("checkin-triggers", checkInTriggerOptions, latestEntry.triggers || [])}
+      </section>
+      <section class="detail-card">
+        <h3>Recent teacher check-ins</h3>
+        ${
+          getTeacherCheckInEntries().length
+            ? getTeacherCheckInEntries()
+                .slice(0, 5)
+                .map(
+                  (entry) => `
+                    <div class="tracker-entry">
+                      <strong>${escapeHtml(entry.date || "No date")} - ${escapeHtml(entry.overall || "mixed")}</strong>
+                      <p><strong>Behaviors:</strong> ${escapeHtml((entry.behaviors || []).join(", ") || "None entered")}</p>
+                      <p><strong>Triggers:</strong> ${escapeHtml((entry.triggers || []).join(", ") || "None entered")}</p>
+                      <p><strong>Response used:</strong> ${escapeHtml((entry.responses || []).join(", ") || "None entered")}</p>
+                      <p><strong>Student response:</strong> ${escapeHtml((entry.studentResponse || []).join(", ") || "None entered")}</p>
+                      <p><strong>Helpful support:</strong> ${escapeHtml(entry.supportThatHelped || "Not entered")}</p>
+                      <p><strong>Positive moment:</strong> ${escapeHtml(entry.positiveMoment || "Not entered")}</p>
+                    </div>
+                  `
+                )
+                .join("")
+            : "<p>No teacher check-ins saved yet. Save one above to start tracking classroom patterns.</p>"
+        }
+      </section>
+    `
+    : `
+      <section class="section-card">
+        <h2>Daily check-in</h2>
+        <p>Quick daily reflection in about one to two minutes.</p>
+      </section>
+      <section class="detail-card">
+        <div class="tracker-form">
+          <label class="tracker-field">
+            <span>How was today overall?</span>
+            <select id="checkin-overall">
+              <option value="calm" ${latestEntry.overall === "calm" ? "selected" : ""}>Calm</option>
+              <option value="mixed" ${latestEntry.overall === "mixed" ? "selected" : ""}>Mixed</option>
+              <option value="stressful" ${latestEntry.overall === "stressful" ? "selected" : ""}>Stressful</option>
+            </select>
+          </label>
+          <div class="tracker-field">
+            <span>What behaviors happened today?</span>
+            ${checkboxList("checkin-behaviors", checkInBehaviorOptions, latestEntry.behaviors || [])}
+          </div>
+          <div class="tracker-field">
+            <span>What triggered the behavior?</span>
+            ${checkboxList("checkin-triggers", checkInTriggerOptions, latestEntry.triggers || [])}
+          </div>
+          <div class="tracker-field">
+            <span>How did you respond?</span>
+            ${checkboxList("checkin-responses", checkInResponseOptions, latestEntry.responses || [])}
+          </div>
+          <div class="tracker-field">
+            <span>How did the child respond?</span>
+            ${checkboxList("checkin-child-response", checkInChildResponseOptions, latestEntry.childResponse || [])}
+          </div>
+          <label class="tracker-field">
+            <span>Positive moment today</span>
+            <textarea id="checkin-positive-moment" rows="3" placeholder="Short entry">${escapeHtml(latestEntry.positiveMoment || "")}</textarea>
+          </label>
+          <div class="hero-actions hero-actions--stacked">
+            <button class="primary-button" type="button" data-save-checkin="true">Submit</button>
+          </div>
         </div>
-        <div class="tracker-field">
-          <span>How did you respond?</span>
-          ${checkboxList("checkin-responses", checkInResponseOptions, latestEntry.responses || [])}
-        </div>
-        <div class="tracker-field">
-          <span>How did the child respond?</span>
-          ${checkboxList("checkin-child-response", checkInChildResponseOptions, latestEntry.childResponse || [])}
-        </div>
-        <label class="tracker-field">
-          <span>Positive moment today</span>
-          <textarea id="checkin-positive-moment" rows="3" placeholder="Short entry">${escapeHtml(latestEntry.positiveMoment || "")}</textarea>
-        </label>
-        <div class="hero-actions hero-actions--stacked">
-          <button class="primary-button" type="button" data-save-checkin="true">Submit</button>
-        </div>
-      </div>
-    </section>
-  `;
+      </section>
+    `;
 }
 
 function renderTeam() {
@@ -4722,6 +4845,10 @@ function renderTeacher() {
           <strong>Real-Time Help</strong>
           <span>Use calm steps during refusal, yelling, shutdown, aggression, or anxiety.</span>
         </button>
+        <button class="button-card" type="button" data-route-link="checkin">
+          <strong>Teacher Check-In</strong>
+          <span>Log classroom patterns, triggers, responses, and small wins.</span>
+        </button>
         <button class="button-card" type="button" data-route-link="learning">
           <strong>Lessons</strong>
           <span>Open the same trauma-informed lessons used across the app.</span>
@@ -4883,6 +5010,24 @@ document.addEventListener("click", (event) => {
       triggers: getCheckedValues("checkin-triggers"),
       responses: getCheckedValues("checkin-responses"),
       childResponse: getCheckedValues("checkin-child-response"),
+      positiveMoment
+    });
+    renderRoute();
+    return;
+  }
+
+  const teacherCheckInButton = event.target.closest("[data-save-teacher-checkin]");
+  if (teacherCheckInButton) {
+    const positiveMoment = document.getElementById("teacher-checkin-positive-moment")?.value.trim() || "";
+    const supportThatHelped = document.getElementById("teacher-checkin-support")?.value.trim() || "";
+    saveTeacherCheckInEntry({
+      date: new Date().toISOString().slice(0, 10),
+      overall: document.getElementById("teacher-checkin-overall")?.value || "mixed",
+      behaviors: getCheckedValues("teacher-checkin-behaviors"),
+      triggers: getCheckedValues("teacher-checkin-triggers"),
+      responses: getCheckedValues("teacher-checkin-responses"),
+      studentResponse: getCheckedValues("teacher-checkin-student-response"),
+      supportThatHelped,
       positiveMoment
     });
     renderRoute();
