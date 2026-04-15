@@ -354,6 +354,60 @@ const fallbackContent = {
         "Using fewer words can lower pressure when a child is overwhelmed.",
         "Offering water, a blanket, or a quiet corner can support regulation."
       ]
+    },
+    {
+      slug: "trauma-informed-classroom-responses",
+      title: "Trauma-Informed Classroom Responses",
+      icon: "TC",
+      intro:
+        "Teachers often see the impact of trauma in real time through behavior, attention, transitions, and peer conflict. A trauma-informed classroom response helps children feel safer, protects dignity, and keeps adults from escalating the moment.",
+      bullets: [
+        "Behavior can reflect stress, threat, overload, or shame, not just noncompliance.",
+        "A calm adult response helps the child return to regulation faster.",
+        "Private support is usually more effective than public correction.",
+        "Predictability, relationship, and repair support learning."
+      ],
+      examples: [
+        "A teacher lowers their voice, moves closer, and gives one simple direction instead of correcting across the room.",
+        "A student who refuses may respond better to two safe choices than to a power struggle.",
+        "After the child is calm, the teacher returns to the expectation and helps with repair."
+      ]
+    },
+    {
+      slug: "de-escalation-at-school",
+      title: "De-Escalation in School",
+      icon: "DS",
+      intro:
+        "De-escalation is about reducing threat, not winning. When a child begins to unravel at school, the adult's job is to bring the temperature down so safety, regulation, and learning can come back online.",
+      bullets: [
+        "Use fewer words and one direction at a time.",
+        "Notice early warning signs before the situation gets bigger.",
+        "Avoid public shame, sarcasm, and rapid back-and-forth arguing.",
+        "Offer reset space, clear choices, and a calm path back."
+      ],
+      examples: [
+        "When a child starts yelling, the teacher shortens language and pauses demands instead of escalating volume.",
+        "A student who is refusing can be offered a reset chair, a brief break, or a small first step.",
+        "A calm adult presence can interrupt a chain reaction before the whole class is involved."
+      ]
+    },
+    {
+      slug: "trauma-and-adhd-signals",
+      title: "Trauma and ADHD Signals",
+      icon: "TA",
+      intro:
+        "Trauma and ADHD can overlap in ways that make behavior hard to read. Children may seem impulsive, distracted, oppositional, or emotionally reactive when the real issue is a mix of regulation stress, attention difficulty, and nervous system overload.",
+      bullets: [
+        "Both trauma and ADHD can affect focus, memory, flexibility, and impulse control.",
+        "A child may miss directions because of overload, distraction, or both.",
+        "Support works better when adults scaffold tasks and teach regulation directly.",
+        "The goal is not to excuse behavior. The goal is to respond accurately and effectively."
+      ],
+      examples: [
+        "A student may blurt out or leave their seat more often during stress-heavy parts of the day.",
+        "A child may look defiant when they actually missed the direction or froze under pressure.",
+        "Short steps, visual supports, movement, and calm repetition often help more than lectures."
+      ]
     }
   ],
   learningPath: [
@@ -719,6 +773,21 @@ const learningTopicLookLikeMap = {
     "A parent notices their child borrowing their calm voice and slower breathing after a few minutes of staying close.",
     "Instead of demanding eye contact, the parent sits nearby and keeps the moment simple and steady.",
     "The child may not calm instantly, but repeated calm support teaches their brain what safety feels like."
+  ],
+  "trauma-informed-classroom-responses": [
+    "A teacher notices a student getting louder during transitions and responds with a calm voice, one direction, and space instead of public correction.",
+    "Rather than arguing in front of the class, the adult offers two safe choices and helps the child re-enter when regulated.",
+    "The goal shifts from winning the moment to restoring safety, dignity, and learning."
+  ],
+  "de-escalation-at-school": [
+    "A child starts refusing work, so the teacher lowers demands, shortens language, and offers a reset before the situation turns into a power struggle.",
+    "Instead of calling out the behavior publicly, the adult moves closer, stays calm, and gives one next step.",
+    "Small early interventions often prevent bigger classroom escalations later."
+  ],
+  "trauma-and-adhd-signals": [
+    "A student may look oppositional when they actually missed the direction because of overload, distraction, or stress.",
+    "A child may fidget, blurt out, or shut down faster when trauma stress and ADHD both affect regulation.",
+    "Support works better when adults slow down, repeat clearly, and teach coping and transition skills directly."
   ]
 };
 
@@ -1535,6 +1604,33 @@ const supportToolOptions = [
       "Avoid too much information or pressure.",
       "Offer a simple choice that supports regulation.",
       "Allow reset time and build a tiny next step together."
+    ]
+  }
+];
+
+const teacherTrainingTopics = [
+  {
+    title: "Trauma-Informed Care at School",
+    points: [
+      "Behavior may reflect survival stress, not just defiance or disrespect.",
+      "Predictability, safety, and connection help children stay available for learning.",
+      "A regulated adult response often changes the whole direction of the moment."
+    ]
+  },
+  {
+    title: "How to Respond to Children with Trauma History",
+    points: [
+      "Use a calm voice, fewer words, and one direction at a time.",
+      "Avoid shame, public correction, and power struggles when a child is overwhelmed.",
+      "Offer co-regulation, choice, and a path back into the routine."
+    ]
+  },
+  {
+    title: "How Trauma Affects Children with ADHD",
+    points: [
+      "Trauma and ADHD can both affect impulse control, attention, memory, and flexibility.",
+      "A child may look oppositional when they are overloaded, dysregulated, or confused.",
+      "Support works better when adults reduce pressure, scaffold tasks, and teach regulation skills directly."
     ]
   }
 ];
@@ -3037,7 +3133,7 @@ function renderLearningList() {
   appContentRoot.innerHTML = `
     <section class="section-card">
       <h2>Learn</h2>
-      <p>These short lessons help explain how stress and trauma can affect a child’s behavior, feelings, and ability to cope.</p>
+      <p>These short lessons help parents, teachers, and professionals understand how stress and trauma can affect a child's behavior, feelings, attention, and ability to cope.</p>
     </section>
     <section class="section-card">
       <div class="section-card__header">
@@ -4517,6 +4613,9 @@ function renderRoute() {
     case "progress":
       renderProgressTracker();
       break;
+    case "teacher":
+      renderTeacher();
+      break;
     case "team":
       renderTeam();
       break;
@@ -4601,6 +4700,104 @@ Thank you,
   `;
 }
 
+function renderTeacher() {
+  screenTitle.textContent = "Teacher";
+  appContentRoot.innerHTML = `
+    <section class="hero">
+      <h2>Teacher support and training</h2>
+      <p>This tab gives teachers the same practical help tools as parents, along with trauma-informed classroom training for responding to children with trauma history, behavior concerns, and cross-system needs.</p>
+      <div class="pill-row">
+        <span class="pill">Trauma-informed</span>
+        <span class="pill">Classroom ready</span>
+        <span class="pill">Behavior support</span>
+        <span class="pill">Cross-system care</span>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Same practical help</h2>
+      <p>Teachers can use the same response tools parents use so children experience calmer, more predictable support across home, school, and services.</p>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="button-card" type="button" data-route-link="support">
+          <strong>Real-Time Help</strong>
+          <span>Use calm steps during refusal, yelling, shutdown, aggression, or anxiety.</span>
+        </button>
+        <button class="button-card" type="button" data-route-link="learning">
+          <strong>Lessons</strong>
+          <span>Open the same trauma-informed lessons used across the app.</span>
+        </button>
+        <button class="button-card" type="button" data-route-link="school">
+          <strong>School Support</strong>
+          <span>See school planning, meeting prep, and practical classroom supports.</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>Teacher training lessons</h2>
+      <div class="hero-actions hero-actions--stacked">
+        <button class="button-card" type="button" data-learning="trauma-informed-classroom-responses">
+          <strong>Trauma-Informed Classroom Responses</strong>
+          <span>Learn how to respond without shame, public escalation, or power struggles.</span>
+        </button>
+        <button class="button-card" type="button" data-learning="de-escalation-at-school">
+          <strong>De-Escalation in School</strong>
+          <span>Use calmer steps when behavior starts rising in the classroom.</span>
+        </button>
+        <button class="button-card" type="button" data-learning="trauma-and-adhd-signals">
+          <strong>Trauma and ADHD Signals</strong>
+          <span>Understand overlap in attention, stress responses, impulsivity, and regulation.</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="detail-stack">
+      ${teacherTrainingTopics
+        .map(
+          (topic) => `
+            <section class="detail-card">
+              <h3>${topic.title}</h3>
+              ${bulletList(topic.points)}
+            </section>
+          `
+        )
+        .join("")}
+    </section>
+
+    <section class="section-card">
+      <h2>Teacher response patterns</h2>
+      ${bulletList([
+        "Connect before correcting whenever possible.",
+        "Give one direction at a time and reduce extra language.",
+        "Offer regulated choices instead of escalating a power struggle.",
+        "Use private support and repair more than public correction.",
+        "Coordinate across home, school, therapy, CPS, and court systems with the same trauma-informed language."
+      ])}
+    </section>
+
+    <section class="section-card">
+      <h2>When trauma and ADHD overlap</h2>
+      ${bulletList([
+        "Break work into smaller steps with visual support.",
+        "Use movement breaks and calm reset options before behavior becomes bigger.",
+        "Check whether the child missed the direction because of overload, distraction, or stress.",
+        "Teach replacement skills directly and repeat them often.",
+        "Notice effort, recovery, and re-entry, not only mistakes."
+      ])}
+    </section>
+
+    <section class="section-card">
+      <h2>Training focus</h2>
+      ${bulletList([
+        "How trauma changes behavior, attention, memory, and flexibility in the classroom.",
+        "How to respond to children with trauma history without shame, power struggles, or public escalation.",
+        "How trauma-informed adult regulation helps children return to safety and learning faster.",
+        "How to use shared response patterns so parents, teachers, and providers are not working against each other."
+      ])}
+    </section>
+  `;
+}
+
 function updateTabState(section) {
   const activeMap = {
     behavior: "behaviors",
@@ -4612,6 +4809,7 @@ function updateTabState(section) {
     supervisor: "team",
     support: "support",
     checkin: "checkin",
+    teacher: "teacher",
     team: "team",
     onboarding: "home"
   };

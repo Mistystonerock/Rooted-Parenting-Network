@@ -153,12 +153,29 @@
           supabaseClient.from("assessment_submissions").select("*").in("family_id", familyIds).order("created_at", { ascending: false })
         ]);
 
+      let messages = [];
+      const { data: messageRows, error: messageError } = await supabaseClient
+        .from("family_messages")
+        .select("*")
+        .in("family_id", familyIds)
+        .order("created_at", { ascending: true });
+
+      if (messageError) {
+        const message = String(messageError.message || "").toLowerCase();
+        if (!(message.includes("family_messages") || message.includes("does not exist") || message.includes("schema cache"))) {
+          throw messageError;
+        }
+      } else {
+        messages = messageRows || [];
+      }
+
       return {
         families: families || [],
         children: children || [],
         logs: logs || [],
         completions: completions || [],
-        assessments: assessments || []
+        assessments: assessments || [],
+        messages: messages || []
       };
     }
 
@@ -278,6 +295,7 @@
         const summaries = buildWeeklySummaries(logs);
         const completion = dataset.completions.find((item) => item.family_id === family.id);
         const latestAssessment = dataset.assessments.find((item) => item.family_id === family.id);
+        const messages = dataset.messages.filter((message) => message.family_id === family.id);
 
         return `
           <section class="detail-card">
@@ -304,6 +322,33 @@
                   `
                 )
                 .join("")}
+            </div>
+            <div class="note-box">
+              <strong>Messages</strong>
+              ${
+                messages.length
+                  ? messages
+                      .map(
+                        (message) => `
+                          <div class="summary-entry">
+                            <p><strong>${escapeHtml(message.sender_role === "parent" ? "Parent" : "Provider")}</strong></p>
+                            <p>${escapeHtml(message.message_text)}</p>
+                            <p><small>${escapeHtml(new Date(message.created_at).toLocaleString())}</small></p>
+                          </div>
+                        `
+                      )
+                      .join("")
+                  : "<p>No messages yet.</p>"
+              }
+              <div class="tracker-form" style="margin-top:12px;">
+                <label class="tracker-field">
+                  <span>Reply to family</span>
+                  <textarea id="staff-message-${family.id}" rows="3" placeholder="Type a message for this family"></textarea>
+                </label>
+                <div class="hero-actions hero-actions--stacked">
+                  <button class="secondary-button" type="button" data-send-staff-message="${family.id}">Send Reply</button>
+                </div>
+              </div>
             </div>
           </section>
         `;
@@ -403,6 +448,45 @@
         const inviteCodes = await loadInviteCodes(access.session.user.id);
         renderPortal(access.profile, dataset, inviteCodes);
         bindInviteCodeActions(access);
+        portalRoot.addEventListener("click", async (event) => {
+          const replyButton = event.target.closest("[data-send-staff-message]");
+          if (!replyButton) {
+            return;
+          }
+
+          const familyId = replyButton.dataset.sendStaffMessage;
+          const input = document.getElementById(`staff-message-${familyId}`);
+          const messageText = input?.value.trim() || "";
+
+          if (!messageText) {
+            return;
+          }
+
+          const { error } = await supabaseClient
+            .from("family_messages")
+            .insert({
+              family_id: familyId,
+              sender_user_id: access.session.user.id,
+              sender_role: access.profile.role === "admin" ? "admin" : "staff",
+              message_text: messageText
+            });
+
+          if (error) {
+            const message = String(error.message || "").toLowerCase();
+            if (message.includes("family_messages") || message.includes("does not exist") || message.includes("schema cache")) {
+              window.alert("Messaging is not active yet because the newest Supabase SQL has not been run.");
+              return;
+            }
+            window.alert(error.message);
+            return;
+          }
+
+          input.value = "";
+          const refreshedDataset = await loadAssignedFamilies(access.session.user.id);
+          const refreshedInviteCodes = await loadInviteCodes(access.session.user.id);
+          renderPortal(access.profile, refreshedDataset, refreshedInviteCodes);
+          bindInviteCodeActions(access);
+        });
       } catch (error) {
         portalRoot.innerHTML = `
           <section class="section-card">

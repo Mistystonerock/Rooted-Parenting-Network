@@ -489,7 +489,7 @@ button {
   width: 100%;
   max-width: var(--max);
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 8px;
   padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
   background: rgba(255, 253, 249, 0.96);
@@ -861,6 +861,6 @@ button {
 
   .tabbar__item {
     min-height: 52px;
-    font-size: 12px;
+    font-size: 11px;
   }
 }
